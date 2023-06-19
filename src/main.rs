@@ -1,27 +1,37 @@
 use flatbuffers;
 use verdigiris::tflite_schema_generated::tflite;
 const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
-// const BUFFER_PERSON: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
+// const BUFFER: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
 
 fn main() {
     let model = tflite::root_as_model(BUFFER).unwrap();
-    let table = model.description();
-    println!("{:?}", table);
-    let x = model.operator_codes();
-    println!("{:?}", x);
+    println!("model version: {}", model.version());
+    let subgraphs = model.subgraphs().unwrap();
+    let subgraph = subgraphs.get(0);
+    println!("subgraph :{:?}", subgraph.operators().unwrap().len());
 
-    let y = model.subgraphs().unwrap();
-    println!("{}", y.len());
+    let tensors = subgraph.tensors().unwrap();
+    // println!("{:?}", tensors);
+    let buffers = model.buffers().unwrap();
+    // println!("{:?}", buffers);
 
-    let layer = y.get(0);
-    let operators = layer.operators().unwrap();
+    let tensor = tensors.get(0);
+    println!("{:?}", tensor);
 
-    for op in operators {
-        println!("{:?}", op);
-    }
+    let buffer = buffers.get(0);
+    println!("{:?}", buffer);
 
-    let tensors = layer.tensors().unwrap();
-    for tensor in tensors {
+    for (i, tensor) in tensors.iter().enumerate() {
+        let buffer = buffers.get(tensor.buffer() as usize);
+        println!("{}", i);
         println!("{:?}", tensor);
+        println!(
+            "{}: {:?}\n",
+            buffer.data().unwrap_or_default().len(),
+            buffer
+        );
     }
+
+    let op = subgraph.operators().unwrap().get(0);
+    println!("{:?}", op);
 }
