@@ -1,5 +1,5 @@
+use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
-use verdigiris::tflite_schema_generated::tflite;
 const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
 
@@ -8,6 +8,7 @@ fn main() {
     println!("model version: {}", model.version());
     let subgraphs = model.subgraphs().unwrap();
     let subgraph = subgraphs.get(0);
+    println!("subgraphs size: {}", subgraphs.len());
     println!("subgraph :{:?}", subgraph.operators().unwrap().len());
 
     let tensors = subgraph.tensors().unwrap();

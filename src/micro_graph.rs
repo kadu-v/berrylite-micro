@@ -1,19 +1,19 @@
 #[derive(Debug)]
-pub struct TFLiteIntArray<'a> {
+pub struct BLiteIntArray<'a> {
     size: usize,
     data: &'a mut [isize],
 }
 
 #[derive(Debug)]
-pub struct TFLiteFloatArray<'a> {
+pub struct BLiteFloatArray<'a> {
     size: usize,
     data: &'a mut [f32],
 }
 
 #[derive(Debug)]
-pub struct TFLiteNode<'a> {
-    inputs: &'a mut TFLiteFloatArray<'a>,
-    outputs: &'a mut TFLiteFloatArray<'a>,
-    intermidiates: &'a mut TFLiteFloatArray<'a>,
-    temporaries: &'a mut TFLiteFloatArray<'a>,
+pub struct BLiteNode<'a> {
+    inputs: &'a mut BLiteFloatArray<'a>,
+    outputs: &'a mut BLiteFloatArray<'a>,
+    intermidiates: &'a mut BLiteFloatArray<'a>,
+    temporaries: &'a mut BLiteFloatArray<'a>,
 }
