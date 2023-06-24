@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use berrylite::micro_graph::*;
 use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
 const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
@@ -25,18 +26,15 @@ fn main() {
     println!("{:?}", buffer);
 
     let data = buffer.data().unwrap();
-    println!("data: {:?}", data);
+    println!("data: {:?}", buffer);
 
     let row_data = data.bytes();
     println!("{:?}, len: {}", row_data, row_data.len());
 
     unsafe {
-        let v = core::slice::from_raw_parts(
-            row_data.as_ptr() as *const f32,
-            row_data.len() / size_of::<f32>(),
-        );
-        println!("{:?}", v);
-        println!("{}", v.len());
+        let v = BLiteFloatArray::from_buffer(buffer);
+        println!("{:?}", v.as_ref().unwrap());
+        println!("{}", v.as_ref().unwrap().len());
     }
     // for (i, tensor) in tensors.iter().enumerate() {
     //     let buffer = buffers.get(tensor.buffer() as usize);
