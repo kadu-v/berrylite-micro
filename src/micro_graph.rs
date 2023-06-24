@@ -1,45 +1,33 @@
-use crate::tflite_schema_generated::tflite::Buffer;
+use crate::micro_array::BLiteArray;
+use crate::micro_context::BLiteContext;
+use crate::micro_erros::BLiteStatus;
 
 #[derive(Debug)]
-pub struct BLiteIntArray<'a> {
-    size: usize,
-    data: &'a mut [isize],
+pub struct Subgraph<'a, T, R: Regstration<'a, T>> {
+    node_and_regstrations: &'a [(BLiteNode<'a>, R)],
+    tensors: &'a [BLiteArray<'a, T>],
 }
 
-#[derive(Debug)]
-pub struct BLiteFloatArray<'a> {
-    data: &'a mut [f32],
-}
-
-impl<'a> BLiteFloatArray<'a> {
-    pub fn new(data: &'a mut [f32]) -> BLiteFloatArray<'a> {
-        BLiteFloatArray { data }
-    }
-
-    pub fn from_buffer(buffer: Buffer) -> Option<BLiteFloatArray<'a>> {
-        if let Some(buffer_data) = buffer.data() {
-            let bytes = buffer_data.bytes();
-            let data = unsafe {
-                core::slice::from_raw_parts_mut(
-                    bytes.as_ptr() as *mut f32,
-                    bytes.len() / core::mem::size_of::<f32>(),
-                )
-            };
-            return Some(BLiteFloatArray { data: data });
-        } else {
-            return None;
+impl<'a, T, R: Regstration<'a, T>> Subgraph<'a, T, R> {
+    pub fn new(
+        node_and_regstrations: &'a [(BLiteNode<'a>, R)],
+        tensors: &'a [BLiteArray<'a, T>],
+    ) -> Self {
+        Self {
+            node_and_regstrations,
+            tensors,
         }
     }
+}
 
-    pub fn len(&self) -> usize {
-        self.data.len()
-    }
+pub trait Regstration<'a, T> {
+    fn eval(self, context: BLiteContext, node: &'a BLiteNode<'a>) -> BLiteStatus;
 }
 
 #[derive(Debug)]
 pub struct BLiteNode<'a> {
-    inputs: &'a mut BLiteFloatArray<'a>,
-    outputs: &'a mut BLiteFloatArray<'a>,
-    intermidiates: &'a mut BLiteFloatArray<'a>,
-    temporaries: &'a mut BLiteFloatArray<'a>,
+    inputs: &'a BLiteArray<'a, usize>,
+    outputs: &'a BLiteArray<'a, usize>,
+    intermidiates: &'a BLiteArray<'a, usize>,
+    temporaries: &'a BLiteArray<'a, usize>,
 }
