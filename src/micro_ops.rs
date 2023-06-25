@@ -1,5 +1,5 @@
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteStatus;
+use crate::micro_erros::Result;
 use crate::micro_graph::BLiteNode;
 
 pub trait Regstration<'a, T> {
@@ -7,7 +7,7 @@ pub trait Regstration<'a, T> {
         self,
         context: BLiteContext,
         node: &'a BLiteNode<'a>,
-    ) -> BLiteStatus;
+    ) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ impl<'a, R> Regstration<'a, R> for Ops {
         self,
         context: BLiteContext,
         node: &'a BLiteNode<'a>,
-    ) -> BLiteStatus {
+    ) -> Result<()> {
         todo!()
     }
 }

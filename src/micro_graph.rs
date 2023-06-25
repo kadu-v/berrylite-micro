@@ -1,5 +1,6 @@
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::BLiteArray;
+use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_ops::Regstration;
 use crate::tflite_schema_generated::tflite;
 use core::fmt::Debug;
@@ -33,27 +34,24 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
     pub fn allocate_subgraph(
         allocator: &mut impl ArenaAllocator,
         subgraph: &tflite::SubGraph<'_>,
-    ) -> Option<Self> {
+    ) -> Result<Self> {
         // allocate tensors
         let tensors_size =
             subgraph.tensors().unwrap().len();
 
-        println!("ok");
         // Note that tensors
-        let mut tensors = unsafe {
+        let tensors = unsafe {
             match allocator.alloc(
                 size_of::<BLiteArray<'a, T>>()
                     * tensors_size,
                 align_of::<BLiteArray<'a, T>>(),
             ) {
-                Some(tensors_row_ptr) => {
-                    from_raw_parts_mut(
-                        tensors_row_ptr
-                            as *mut BLiteArray<'a, T>,
-                        tensors_size,
-                    )
-                }
-                None => return None,
+                Ok(tensors_row_ptr) => from_raw_parts_mut(
+                    tensors_row_ptr
+                        as *mut BLiteArray<'a, T>,
+                    tensors_size,
+                ),
+                Err(err) => return Err(err),
             }
         };
 
@@ -69,7 +67,7 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         unsafe {
             println!("{}", size_of_val(&tensors));
         }
-        return None;
+        return Err(CreateGraphFailed);
     }
 
     // fn allocate_eval_tensors(

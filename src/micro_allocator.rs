@@ -1,11 +1,11 @@
-use core::mem::{align_of, size_of};
+use crate::micro_erros::{BLiteError::*, Result};
 
 pub trait ArenaAllocator {
     unsafe fn alloc(
         &mut self,
         size: usize,
         align: usize,
-    ) -> Option<*mut u8>;
+    ) -> Result<*mut u8>;
     unsafe fn dealloc(
         &mut self,
         ptr: *mut u8,
@@ -33,23 +33,22 @@ impl ArenaAllocator for BumpArenaAllocator {
         &mut self,
         size: usize,
         align: usize,
-    ) -> Option<*mut u8> {
+    ) -> Result<*mut u8> {
         let alloc_size = size;
         let alloc_start = Self::align_up(self.next, align);
         let alloc_next =
             match alloc_start.checked_add(alloc_size) {
                 Some(next) => next,
-                None => return None,
+                None => return Err(AllocationFailed),
             };
 
-        println!("allocation size: {}", alloc_next);
         if alloc_next > self.arena.len() {
-            None
+            Err(AllocationFailed)
         } else {
             let ptr = self.arena[self.next..alloc_next]
                 .as_mut_ptr();
             self.next = alloc_next;
-            Some(ptr)
+            Ok(ptr)
         }
     }
 
