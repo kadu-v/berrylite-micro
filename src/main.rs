@@ -1,6 +1,7 @@
-use std::mem::size_of;
+use std::mem::{align_of, size_of};
 
 use berrylite::micro_allocator::ArenaAllocator;
+use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_array::BLiteArray;
 use berrylite::micro_graph::*;
 use berrylite::tflite_schema_generated::tflite;
@@ -8,7 +9,8 @@ use flatbuffers;
 const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
 
-static mut ARENA: [u8; 3000] = [0; 3000];
+const ARENA_SIZE: usize = 3000;
+static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn main() {
     let model = tflite::root_as_model(BUFFER).unwrap();
@@ -42,8 +44,10 @@ fn main() {
         println!("{}", v.as_ref().unwrap().len());
     }
     unsafe {
-        let mut allocator = ArenaAllocator::new(&mut ARENA);
-        let v = &mut *(allocator.alloc::<[f32; 10]>(1).unwrap() as *mut [f32; 10]);
+        let mut allocator = BumpArenaAllocator::new(&mut ARENA);
+        let v = &mut *(allocator
+            .alloc(size_of::<[f32; 10]>() * 1, align_of::<[f32; 10]>())
+            .unwrap() as *mut [f32; 10]);
 
         for i in 0..10 {
             v[i] = 0.1;
@@ -51,12 +55,19 @@ fn main() {
 
         println!("{:?}", v);
 
-        let mut a = &mut *(allocator.alloc::<f32>(10).unwrap() as *mut [f32; 10]);
+        let mut a = &mut *(allocator
+            .alloc(size_of::<f32>() * 10, align_of::<f32>())
+            .unwrap() as *mut [f32; 10]);
         for i in 0..10 {
             a[i] = 0.1;
         }
+
+        println!("{}", align_of::<u8>());
         println!("{:?}", a);
+        let array: BLiteArray<'_, f32> = BLiteArray::new(&mut allocator, 100, &[20, 5]).unwrap();
+        println!("{:?}", array);
     }
+
     // for (i, tensor) in tensors.iter().enumerate() {
     //     let buffer = buffers.get(tensor.buffer() as usize);
     //     println!("{}", i);

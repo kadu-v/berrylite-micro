@@ -1,23 +1,61 @@
-use core::mem::size_of;
+use core::mem::{align_of, size_of};
 
-pub struct ArenaAllocator {
+pub trait ArenaAllocator {
+    unsafe fn alloc(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> Option<*mut u8>;
+    unsafe fn dealloc(
+        &mut self,
+        ptr: *mut u8,
+        size: usize,
+        align: usize,
+    );
+}
+pub struct BumpArenaAllocator {
     arena: &'static mut [u8],
     next: usize,
 }
 
-impl ArenaAllocator {
+impl BumpArenaAllocator {
     pub unsafe fn new(arena: &'static mut [u8]) -> Self {
         Self { arena, next: 0 }
     }
 
-    pub unsafe fn alloc<T>(&mut self, size: usize) -> Option<*mut u8> {
-        let alloc_size = size_of::<T>() * size;
-        let next = self.next + alloc_size;
-        if self.next >= self.arena.len() || next >= self.arena.len() {
-            return None;
+    fn align_up(addr: usize, align: usize) -> usize {
+        (addr + align - 1) & !(align - 1)
+    }
+}
+
+impl ArenaAllocator for BumpArenaAllocator {
+    unsafe fn alloc(
+        &mut self,
+        size: usize,
+        align: usize,
+    ) -> Option<*mut u8> {
+        let alloc_size = size;
+        let alloc_start = Self::align_up(self.next, align);
+        let alloc_next = match alloc_start.checked_add(alloc_size) {
+            Some(next) => next,
+            None => return None,
+        };
+
+        if alloc_next > self.arena.len() {
+            None
+        } else {
+            let ptr = self.arena[self.next..alloc_next].as_mut_ptr();
+            self.next = alloc_next;
+            Some(ptr)
         }
-        let ptr = self.arena[self.next..next].as_mut_ptr();
-        self.next = next;
-        return Some(ptr);
+    }
+
+    unsafe fn dealloc(
+        &mut self,
+        ptr: *mut u8,
+        size: usize,
+        align: usize,
+    ) {
+        todo!()
     }
 }
