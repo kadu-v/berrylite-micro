@@ -1,15 +1,16 @@
 use crate::micro_allocator::ArenaAllocator;
 use crate::tflite_schema_generated::tflite::Buffer;
+use core::fmt::Debug;
 use core::mem::{align_of, size_of};
 use core::slice::from_raw_parts_mut;
 
 #[derive(Debug)]
-pub struct BLiteArray<'a, T> {
+pub struct BLiteArray<'a, T: Debug> {
     pub data: &'a mut [T],
     pub dims: &'a [usize],
 }
 
-impl<'a, T> BLiteArray<'a, T> {
+impl<'a, T: Debug> BLiteArray<'a, T> {
     // This method does not initialize the elements of data
     pub unsafe fn new(
         allocator: &mut impl ArenaAllocator,

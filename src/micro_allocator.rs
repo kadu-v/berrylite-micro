@@ -36,15 +36,18 @@ impl ArenaAllocator for BumpArenaAllocator {
     ) -> Option<*mut u8> {
         let alloc_size = size;
         let alloc_start = Self::align_up(self.next, align);
-        let alloc_next = match alloc_start.checked_add(alloc_size) {
-            Some(next) => next,
-            None => return None,
-        };
+        let alloc_next =
+            match alloc_start.checked_add(alloc_size) {
+                Some(next) => next,
+                None => return None,
+            };
 
+        println!("allocation size: {}", alloc_next);
         if alloc_next > self.arena.len() {
             None
         } else {
-            let ptr = self.arena[self.next..alloc_next].as_mut_ptr();
+            let ptr = self.arena[self.next..alloc_next]
+                .as_mut_ptr();
             self.next = alloc_next;
             Some(ptr)
         }

@@ -4,9 +4,11 @@ use berrylite::micro_allocator::ArenaAllocator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_array::BLiteArray;
 use berrylite::micro_graph::*;
+use berrylite::micro_ops::Ops;
 use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
-const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
+const BUFFER: &[u8; 3164] =
+    include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
 
 const ARENA_SIZE: usize = 3000;
@@ -18,7 +20,7 @@ fn main() {
     let subgraphs = model.subgraphs().unwrap();
     let subgraph = subgraphs.get(0);
     println!("subgraphs size: {}", subgraphs.len());
-    println!("subgraph :{:?}", subgraph.operators().unwrap().len());
+    println!("subgraph :{:?}", subgraph);
 
     let tensors = subgraph.tensors().unwrap();
     // println!("{:?}", tensors);
@@ -39,15 +41,21 @@ fn main() {
 
     unsafe {
         let dims = &[10];
-        let v = BLiteArray::<f32>::from_buffer(buffer, dims);
+        let v =
+            BLiteArray::<f32>::from_buffer(buffer, dims);
         println!("{:?}", v.as_ref().unwrap());
         println!("{}", v.as_ref().unwrap().len());
     }
     unsafe {
-        let mut allocator = BumpArenaAllocator::new(&mut ARENA);
+        let mut allocator =
+            BumpArenaAllocator::new(&mut ARENA);
         let v = &mut *(allocator
-            .alloc(size_of::<[f32; 10]>() * 1, align_of::<[f32; 10]>())
-            .unwrap() as *mut [f32; 10]);
+            .alloc(
+                size_of::<[f32; 10]>() * 1,
+                align_of::<[f32; 10]>(),
+            )
+            .unwrap()
+            as *mut [f32; 10]);
 
         for i in 0..10 {
             v[i] = 0.1;
@@ -57,15 +65,24 @@ fn main() {
 
         let mut a = &mut *(allocator
             .alloc(size_of::<f32>() * 10, align_of::<f32>())
-            .unwrap() as *mut [f32; 10]);
+            .unwrap()
+            as *mut [f32; 10]);
         for i in 0..10 {
             a[i] = 0.1;
         }
 
         println!("{}", align_of::<u8>());
         println!("{:?}", a);
-        let array: BLiteArray<'_, f32> = BLiteArray::new(&mut allocator, 100, &[20, 5]).unwrap();
+        let array: BLiteArray<'_, f32> =
+            BLiteArray::new(&mut allocator, 100, &[20, 5])
+                .unwrap();
         println!("{:?}", array);
+
+        let subgraph =
+            Subgraph::<f32, Ops>::allocate_subgraph(
+                &mut allocator,
+                &subgraph,
+            );
     }
 
     // for (i, tensor) in tensors.iter().enumerate() {
