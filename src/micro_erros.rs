@@ -10,4 +10,6 @@ pub enum BLiteError {
 
     // micro graph errors
     CreateGraphFailed,
+    NotFoundTensor,
+    NotFoundBufferData,
 }

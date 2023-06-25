@@ -1,3 +1,5 @@
+use flatbuffers::Vector;
+
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::tflite_schema_generated::tflite::Buffer;
@@ -8,7 +10,7 @@ use core::slice::from_raw_parts_mut;
 #[derive(Debug)]
 pub struct BLiteArray<'a, T: Debug> {
     pub data: &'a mut [T],
-    pub dims: &'a [usize],
+    pub dims: &'a [i32],
 }
 
 impl<'a, T: Debug> BLiteArray<'a, T> {
@@ -16,13 +18,13 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
     pub unsafe fn new(
         allocator: &mut impl ArenaAllocator,
         data_size: usize,
-        dims: &[usize],
+        dims: &[i32],
     ) -> Result<Self> {
         // TODO: should use chech_mul
         let tot_size =
             dims.iter().fold(1, |x, &acc| x * acc);
 
-        if tot_size != data_size {
+        if tot_size != data_size as i32 {
             return Err(NotMatchSize);
         }
 
@@ -30,6 +32,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
             size_of::<T>() * data_size,
             align_of::<T>(),
         )?;
+
         let data = from_raw_parts_mut(
             data_row_ptr as *mut T,
             data_size,
@@ -41,7 +44,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
         )?;
 
         let copied_dims = from_raw_parts_mut(
-            dims_row_ptr as *mut usize,
+            dims_row_ptr as *mut i32,
             dims.len(),
         );
 
@@ -57,35 +60,43 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
 
     pub fn init(
         data: &'a mut [T],
-        dims: &'a [usize],
+        dims: &'a [i32],
     ) -> Self {
         Self { data, dims }
     }
 
-    pub unsafe fn from_buffer(
+    pub unsafe fn from_tflite_buffer(
         buffer: Buffer,
-        dims: &'a [usize],
-    ) -> Option<Self> {
+        shape: Vector<'a, i32>,
+    ) -> Result<Self> {
+        println!("{:?}", buffer);
         if let Some(buffer_data) = buffer.data() {
-            let bytes = buffer_data.bytes();
-            let data = unsafe {
-                core::slice::from_raw_parts_mut(
-                    bytes.as_ptr() as *mut T,
-                    bytes.len() / core::mem::size_of::<T>(),
-                )
-            };
-            return Some(Self { data, dims });
+            let data =
+                Self::from_tflite_vector(buffer_data)?;
+            let dims = Self::from_tflite_vector(shape)?;
+            return Ok(Self { data, dims });
         } else {
-            return None;
+            return Err(NotFoundBufferData);
         }
+    }
+
+    // This functuion is used for tflite flatbeffer's vector only
+    // because of chainging lifetims 'b to 'a
+    pub unsafe fn from_tflite_vector<'b, S, U>(
+        vector: Vector<'b, S>,
+    ) -> Result<&'a mut [U]> {
+        let bytes = vector.bytes();
+        let data = unsafe {
+            core::slice::from_raw_parts_mut(
+                bytes.as_ptr() as *mut U,
+                bytes.len() / core::mem::size_of::<U>(),
+            )
+        };
+
+        return Ok(data);
     }
 
     pub fn len(&self) -> usize {
         self.data.len()
     }
-}
-
-#[derive(Debug)]
-pub enum BLiteDataType {
-    Float32,
 }

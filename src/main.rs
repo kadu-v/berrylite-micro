@@ -40,13 +40,6 @@ fn main() {
     println!("{:?}, len: {}", row_data, row_data.len());
 
     unsafe {
-        let dims = &[10];
-        let v =
-            BLiteArray::<f32>::from_buffer(buffer, dims);
-        println!("{:?}", v.as_ref().unwrap());
-        println!("{}", v.as_ref().unwrap().len());
-    }
-    unsafe {
         let mut allocator =
             BumpArenaAllocator::new(&mut ARENA);
         let v = &mut *(allocator
@@ -78,23 +71,26 @@ fn main() {
                 .unwrap();
         println!("{:?}", array);
 
-        let subgraph =
+        let xsubgraph =
             Subgraph::<f32, Ops>::allocate_subgraph(
                 &mut allocator,
                 &subgraph,
+                &buffers,
             );
+        println!("{:?}", xsubgraph);
+        // println!("{:?}", subgraph);
     }
 
-    // for (i, tensor) in tensors.iter().enumerate() {
-    //     let buffer = buffers.get(tensor.buffer() as usize);
-    //     println!("{}", i);
-    //     println!("tensor: {:?}", tensor);
-    //     println!(
-    //         "{}: {:?}\n",
-    //         buffer.data().unwrap_or_default().len(),
-    //         buffer
-    //     );
-    // }
+    for (i, tensor) in tensors.iter().enumerate() {
+        let buffer = buffers.get(tensor.buffer() as usize);
+        println!("{}", i);
+        println!("tensor: {:?}", tensor);
+        println!(
+            "{}: {:?}\n",
+            buffer.data().unwrap_or_default().len(),
+            buffer
+        );
+    }
 
     // let op = subgraph.operators().unwrap().get(0);
     // println!("{:?}", op);

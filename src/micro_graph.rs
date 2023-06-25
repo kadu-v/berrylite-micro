@@ -1,8 +1,12 @@
+use flatbuffers::{ForwardsUOffset, Vector};
+
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::BLiteArray;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_ops::Regstration;
-use crate::tflite_schema_generated::tflite;
+use crate::tflite_schema_generated::tflite::{
+    self, Buffer,
+};
 use core::fmt::Debug;
 use core::{
     mem::{align_of, size_of, size_of_val},
@@ -33,9 +37,21 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
 
     pub fn allocate_subgraph(
         allocator: &mut impl ArenaAllocator,
-        subgraph: &tflite::SubGraph<'_>,
+        subgraph: &tflite::SubGraph<'a>,
+        buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
     ) -> Result<Self> {
-        // allocate tensors
+        let tensors = Self::allocate_eval_tensors(
+            allocator, subgraph, buffers,
+        )?;
+        return Err(CreateGraphFailed);
+    }
+
+    fn allocate_eval_tensors(
+        allocator: &mut impl ArenaAllocator,
+        subgraph: &tflite::SubGraph<'a>,
+        buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
+    ) -> Result<&'a mut [BLiteArray<'a, T>]> {
+        // size of allocated tensors
         let tensors_size =
             subgraph.tensors().unwrap().len();
 
@@ -55,27 +71,28 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
             }
         };
 
-        for i in 0..tensors_size {
-            let tensor: BLiteArray<'_, T> = unsafe {
-                BLiteArray::new(allocator, 10, &[10])
-                    .unwrap()
-            };
-            tensors[i] = tensor;
+        if let Some(subgprah_tensors) = subgraph.tensors() {
+            for (i, tensor) in
+                subgprah_tensors.iter().enumerate()
+            {
+                let tensor_idx = tensor.buffer();
+                let buffer =
+                    buffers.get(tensor_idx as usize);
+                let dims = tensor.shape().unwrap();
+                let tflite_tensor = unsafe {
+                    BLiteArray::from_tflite_buffer(
+                        buffer, dims,
+                    )?
+                };
+                tensors[i] = tflite_tensor;
+            }
+            todo!()
+        } else {
+            return Err(NotFoundTensor);
         }
-
-        println!("{:?}", tensors);
-        unsafe {
-            println!("{}", size_of_val(&tensors));
-        }
-        return Err(CreateGraphFailed);
     }
 
-    // fn allocate_eval_tensors(
-    //     model: &Model,
-    //     subgprah: &mut SubGraph<'a>,
-    // ) -> Option<&'a [&'a BLiteArray<'a, T>]> {
-    //     todo!()
-    // }
+    // fn
 }
 
 #[derive(Debug)]
