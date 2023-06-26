@@ -16,7 +16,7 @@ use core::{
 #[derive(Debug)]
 pub struct Subgraph<'a, T: Debug, R: Regstration<'a, T>> {
     node_and_regstrations: &'a [(BLiteNode<'a>, &'a R)],
-    tensors: &'a [BLiteArray<'a, T>],
+    tensors: &'a mut [Option<BLiteArray<'a, T>>],
 }
 
 impl<'a, T: Debug, R: Regstration<'a, T>>
@@ -27,7 +27,7 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
             BLiteNode<'a>,
             &'a R,
         )],
-        tensors: &'a [BLiteArray<'a, T>],
+        tensors: &'a mut [Option<BLiteArray<'a, T>>],
     ) -> Self {
         Self {
             node_and_regstrations,
@@ -43,14 +43,14 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         let tensors = Self::allocate_eval_tensors(
             allocator, subgraph, buffers,
         )?;
-        return Err(CreateGraphFailed);
+        return Err(FailedToCreateGraph);
     }
 
     fn allocate_eval_tensors(
         allocator: &mut impl ArenaAllocator,
         subgraph: &tflite::SubGraph<'a>,
         buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
-    ) -> Result<&'a mut [BLiteArray<'a, T>]> {
+    ) -> Result<&'a mut [Option<BLiteArray<'a, T>>]> {
         // size of allocated tensors
         let tensors_size =
             subgraph.tensors().unwrap().len();
@@ -58,13 +58,13 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         // Note that tensors
         let tensors = unsafe {
             match allocator.alloc(
-                size_of::<BLiteArray<'a, T>>()
+                size_of::<Option<BLiteArray<'a, T>>>()
                     * tensors_size,
-                align_of::<BLiteArray<'a, T>>(),
+                align_of::<Option<BLiteArray<'a, T>>>(),
             ) {
                 Ok(tensors_row_ptr) => from_raw_parts_mut(
                     tensors_row_ptr
-                        as *mut BLiteArray<'a, T>,
+                        as *mut Option<BLiteArray<'a, T>>,
                     tensors_size,
                 ),
                 Err(err) => return Err(err),
@@ -82,14 +82,13 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
                 let tflite_tensor = unsafe {
                     BLiteArray::from_tflite_buffer(
                         buffer, dims,
-                    )?
+                    )
                 };
                 tensors[i] = tflite_tensor;
             }
-            todo!()
-        } else {
-            return Err(NotFoundTensor);
+            return Ok(tensors);
         }
+        return Err(NotFoundTensor);
     }
 
     // fn

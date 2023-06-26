@@ -68,15 +68,14 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
     pub unsafe fn from_tflite_buffer(
         buffer: Buffer,
         shape: Vector<'a, i32>,
-    ) -> Result<Self> {
-        println!("{:?}", buffer);
+    ) -> Option<Self> {
         if let Some(buffer_data) = buffer.data() {
             let data =
-                Self::from_tflite_vector(buffer_data)?;
-            let dims = Self::from_tflite_vector(shape)?;
-            return Ok(Self { data, dims });
+                Self::from_tflite_vector(buffer_data);
+            let dims = Self::from_tflite_vector(shape);
+            return Some(Self { data, dims });
         } else {
-            return Err(NotFoundBufferData);
+            return None;
         }
     }
 
@@ -84,7 +83,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
     // because of chainging lifetims 'b to 'a
     pub unsafe fn from_tflite_vector<'b, S, U>(
         vector: Vector<'b, S>,
-    ) -> Result<&'a mut [U]> {
+    ) -> &'a mut [U] {
         let bytes = vector.bytes();
         let data = unsafe {
             core::slice::from_raw_parts_mut(
@@ -93,7 +92,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
             )
         };
 
-        return Ok(data);
+        return data;
     }
 
     pub fn len(&self) -> usize {

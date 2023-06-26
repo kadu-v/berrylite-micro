@@ -56,7 +56,7 @@ fn main() {
 
         println!("{:?}", v);
 
-        let mut a = &mut *(allocator
+        let a = &mut *(allocator
             .alloc(size_of::<f32>() * 10, align_of::<f32>())
             .unwrap()
             as *mut [f32; 10]);
@@ -81,16 +81,16 @@ fn main() {
         // println!("{:?}", subgraph);
     }
 
-    for (i, tensor) in tensors.iter().enumerate() {
-        let buffer = buffers.get(tensor.buffer() as usize);
-        println!("{}", i);
-        println!("tensor: {:?}", tensor);
-        println!(
-            "{}: {:?}\n",
-            buffer.data().unwrap_or_default().len(),
-            buffer
-        );
-    }
+    // for (i, tensor) in tensors.iter().enumerate() {
+    //     let buffer = buffers.get(tensor.buffer() as usize);
+    //     println!("{}", i);
+    //     println!("tensor: {:?}", tensor);
+    //     println!(
+    //         "{}: {:?}\n",
+    //         buffer.data().unwrap_or_default().len(),
+    //         buffer
+    //     );
+    // }
 
     // let op = subgraph.operators().unwrap().get(0);
     // println!("{:?}", op);

@@ -39,11 +39,11 @@ impl ArenaAllocator for BumpArenaAllocator {
         let alloc_next =
             match alloc_start.checked_add(alloc_size) {
                 Some(next) => next,
-                None => return Err(AllocationFailed),
+                None => return Err(FaildToAllocateMemory),
             };
 
         if alloc_next > self.arena.len() {
-            Err(AllocationFailed)
+            Err(FaildToAllocateMemory)
         } else {
             let ptr = self.arena[self.next..alloc_next]
                 .as_mut_ptr();
