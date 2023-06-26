@@ -1,26 +1,42 @@
+use core::fmt::Debug;
+use core::task::Context;
+
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::Result;
 use crate::micro_graph::BLiteNode;
-
-pub trait Regstration<'a, T> {
-    fn eval(
-        self,
-        context: BLiteContext,
-        node: &'a BLiteNode<'a>,
-    ) -> Result<()>;
+pub struct Regstration {
+    eval: for<'a> fn(
+        context: &BLiteContext,
+        node: &BLiteNode<'a>,
+    ) -> Result<()>,
 }
 
-#[derive(Debug)]
-pub enum Ops {
-    Dummy,
-}
+impl Regstration {
+    pub fn new(
+        eval: for<'a> fn(
+            context: &BLiteContext,
+            node: &BLiteNode<'a>,
+        ) -> Result<()>,
+    ) -> Self {
+        Self { eval }
+    }
 
-impl<'a, R> Regstration<'a, R> for Ops {
-    fn eval(
-        self,
-        context: BLiteContext,
-        node: &'a BLiteNode<'a>,
+    pub fn call_eval<'a>(
+        &self,
+        context: &BLiteContext,
+        node: &BLiteNode<'a>,
     ) -> Result<()> {
-        todo!()
+        let eval = self.eval;
+        eval(context, node)
+    }
+}
+
+impl Debug for Regstration {
+    fn fmt(
+        &self,
+        f: &mut core::fmt::Formatter<'_>,
+    ) -> core::fmt::Result {
+        writeln!(f, "Op {{ eval..., }}")?;
+        Ok(())
     }
 }

@@ -4,7 +4,6 @@ use berrylite::micro_allocator::ArenaAllocator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_array::BLiteArray;
 use berrylite::micro_graph::*;
-use berrylite::micro_ops::Ops;
 use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
 const BUFFER: &[u8; 3164] =
@@ -76,12 +75,11 @@ fn main() {
         println!("{:?}", array);
 
         println!("===============================================");
-        let xsubgraph =
-            Subgraph::<f32, Ops>::allocate_subgraph(
-                &mut allocator,
-                &subgraph,
-                &buffers,
-            );
+        let xsubgraph = Subgraph::<f32>::allocate_subgraph(
+            &mut allocator,
+            &subgraph,
+            &buffers,
+        );
         println!("{:?}", xsubgraph);
 
         // println!("{:?}", model);

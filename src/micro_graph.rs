@@ -14,18 +14,17 @@ use core::{
 };
 
 #[derive(Debug)]
-pub struct Subgraph<'a, T: Debug, R: Regstration<'a, T>> {
-    node_and_regstrations: &'a [(BLiteNode<'a>, &'a R)],
+pub struct Subgraph<'a, T: Debug> {
+    node_and_regstrations:
+        &'a [(BLiteNode<'a>, Regstration)],
     tensors: &'a mut [BLiteArray<'a, T>],
 }
 
-impl<'a, T: Debug, R: Regstration<'a, T>>
-    Subgraph<'a, T, R>
-{
+impl<'a, T: Debug> Subgraph<'a, T> {
     pub fn new(
         node_and_regstrations: &'a [(
             BLiteNode<'a>,
-            &'a R,
+            Regstration,
         )],
         tensors: &'a mut [BLiteArray<'a, T>],
     ) -> Self {
@@ -49,6 +48,11 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
             println!("{}, tensor: {:?}", i, tensor);
         }
         return Err(FailedToCreateGraph);
+    }
+
+    unsafe fn allocate_node_and_regstrations() -> Result<()>
+    {
+        todo!()
     }
 
     fn allocate_eval_tensors(
@@ -91,18 +95,17 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
                 };
                 tensors[i] = tflite_tensor;
             }
-            return Ok(tensors);
+            Ok(tensors)
+        } else {
+            Err(NotFoundTensor)
         }
-        return Err(NotFoundTensor);
     }
-
-    // fn
 }
 
 #[derive(Debug)]
 pub struct BLiteNode<'a> {
-    inputs: &'a BLiteArray<'a, usize>,
-    outputs: &'a BLiteArray<'a, usize>,
-    intermidiates: &'a BLiteArray<'a, usize>,
-    temporaries: &'a BLiteArray<'a, usize>,
+    inputs: &'a [usize],
+    outputs: &'a [usize],
+    intermidiates: Option<&'a [usize]>,
+    temporaries: Option<&'a [usize]>,
 }

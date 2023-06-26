@@ -76,17 +76,17 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
             let dims = Self::from_tflite_vector(shape);
             Ok(Self { data, dims })
         } else {
-            let size = shape
+            let data_size = shape
                 .iter()
                 .fold(1usize, |x, acc| x * acc as usize);
             let dims = Self::from_tflite_vector(shape);
-            Self::new(allocator, size, dims)
+            Self::new(allocator, data_size, dims)
         }
     }
 
     // This functuion is used for tflite flatbeffer's vector only
     // because of chainging lifetims 'b to 'a
-    pub unsafe fn from_tflite_vector<'b, S, U>(
+    unsafe fn from_tflite_vector<'b, S, U>(
         vector: Vector<'b, S>,
     ) -> &'a [U] {
         let bytes = vector.bytes();
@@ -101,7 +101,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
 
     // This functuion is used for tflite flatbeffer's vector only
     // because of chainging lifetims 'b to 'a
-    pub unsafe fn from_tflite_vector_mut<'b, S, U>(
+    unsafe fn from_tflite_vector_mut<'b, S, U>(
         vector: Vector<'b, S>,
     ) -> &'a mut [U] {
         let bytes = vector.bytes();
