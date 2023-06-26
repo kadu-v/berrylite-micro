@@ -2,6 +2,9 @@ use flatbuffers::Vector;
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_slice::{
+    from_tflite_vector, from_tflite_vector_mut,
+};
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
@@ -20,7 +23,7 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
         data_size: usize,
         dims: &[i32],
     ) -> Result<Self> {
-        // TODO: should use chech_mul
+        // TODO: should use check_mul
         let tot_size =
             dims.iter().fold(1, |x, &acc| x * acc);
 
@@ -67,51 +70,20 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
 
     pub unsafe fn from_tflite_buffer(
         allocator: &mut impl ArenaAllocator,
-        buffer: Buffer,
+        buffer: Buffer<'a>,
         shape: Vector<'a, i32>,
     ) -> Result<Self> {
         if let Some(buffer_data) = buffer.data() {
-            let data =
-                Self::from_tflite_vector_mut(buffer_data);
-            let dims = Self::from_tflite_vector(shape);
+            let data = from_tflite_vector_mut(&buffer_data);
+            let dims = from_tflite_vector(&shape);
             Ok(Self { data, dims })
         } else {
             let data_size = shape
                 .iter()
                 .fold(1usize, |x, acc| x * acc as usize);
-            let dims = Self::from_tflite_vector(shape);
+            let dims = from_tflite_vector(&shape);
             Self::new(allocator, data_size, dims)
         }
-    }
-
-    // This functuion is used for tflite flatbeffer's vector only
-    // because of chainging lifetims 'b to 'a
-    unsafe fn from_tflite_vector<'b, S, U>(
-        vector: Vector<'b, S>,
-    ) -> &'a [U] {
-        let bytes = vector.bytes();
-        let data = unsafe {
-            core::slice::from_raw_parts(
-                bytes.as_ptr() as *const U,
-                bytes.len() / core::mem::size_of::<U>(),
-            )
-        };
-        return data;
-    }
-
-    // This functuion is used for tflite flatbeffer's vector only
-    // because of chainging lifetims 'b to 'a
-    unsafe fn from_tflite_vector_mut<'b, S, U>(
-        vector: Vector<'b, S>,
-    ) -> &'a mut [U] {
-        let bytes = vector.bytes();
-        let data = unsafe {
-            core::slice::from_raw_parts_mut(
-                bytes.as_ptr() as *mut U,
-                bytes.len() / core::mem::size_of::<U>(),
-            )
-        };
-        return data;
     }
 
     pub fn len(&self) -> usize {

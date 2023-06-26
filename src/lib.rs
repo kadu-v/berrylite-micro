@@ -8,4 +8,5 @@ pub mod micro_context;
 pub mod micro_erros;
 pub mod micro_graph;
 pub mod micro_ops;
+pub mod micro_slice;
 pub mod tflite_schema_generated;

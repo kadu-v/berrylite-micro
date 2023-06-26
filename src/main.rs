@@ -6,15 +6,15 @@ use berrylite::micro_array::BLiteArray;
 use berrylite::micro_graph::*;
 use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
-const BUFFER: &[u8; 3164] =
-    include_bytes!("../models/hello_world_float.tflite");
+// const BUFFER: &[u8; 3164] =
+//     include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] =
 //     include_bytes!("../models/person_detect.tflite");
 
-// const BUFFER: &[u8; 41240] =
-//     include_bytes!("../models/trained_lstm.tflite");
+const BUFFER: &[u8; 41240] =
+    include_bytes!("../models/trained_lstm.tflite");
 
-const ARENA_SIZE: usize = 1024 * 256;
+const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn main() {
@@ -75,20 +75,30 @@ fn main() {
         println!("{:?}", array);
 
         println!("===============================================");
+
+        let operators = subgraph.operators().unwrap();
+
+        let operator_codes =
+            model.operator_codes().unwrap();
         let xsubgraph = Subgraph::<f32>::allocate_subgraph(
             &mut allocator,
             &subgraph,
+            &operators,
+            &operator_codes,
             &buffers,
-        );
-        println!("{:?}", xsubgraph);
+        )
+        .unwrap();
+
+        for e in xsubgraph.node_and_regstrations {
+            println!("{:?}", e);
+        }
+
+        for (i, e) in xsubgraph.tensors.iter().enumerate() {
+            println!("{}: {:?}", i, e);
+        }
 
         // println!("{:?}", model);
         // println!("{:?}", subgraph);
-    }
-
-    let operators = subgraph.operators().unwrap();
-    for op in operators {
-        println!("{:?}", op);
     }
     // // println!("{:?}", operators);
     // for (i, tensor) in tensors.iter().enumerate() {

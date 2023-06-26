@@ -4,23 +4,32 @@ use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::BLiteArray;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_ops::Regstration;
+use crate::micro_slice::from_tflite_vector;
 use crate::tflite_schema_generated::tflite::{
-    self, Buffer,
+    self, Buffer, Operator, OperatorCode,
 };
 use core::fmt::Debug;
 use core::{
-    mem::{align_of, size_of, size_of_val},
+    mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
 
+type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
+type TFLiteOperators<'a> =
+    Vector<'a, ForwardsUOffset<Operator<'a>>>;
+type TFLiteOperatorCodes<'a> =
+    Vector<'a, ForwardsUOffset<OperatorCode<'a>>>;
+type TFLiteBuffers<'a> =
+    Vector<'a, ForwardsUOffset<Buffer<'a>>>;
+
 #[derive(Debug)]
-pub struct Subgraph<'a, T: Debug> {
-    node_and_regstrations:
+pub struct Subgraph<'a, T: Debug + 'a> {
+    pub node_and_regstrations:
         &'a [(BLiteNode<'a>, Regstration)],
-    tensors: &'a mut [BLiteArray<'a, T>],
+    pub tensors: &'a mut [BLiteArray<'a, T>],
 }
 
-impl<'a, T: Debug> Subgraph<'a, T> {
+impl<'a, T: Debug + 'a> Subgraph<'a, T> {
     pub fn new(
         node_and_regstrations: &'a [(
             BLiteNode<'a>,
@@ -36,29 +45,33 @@ impl<'a, T: Debug> Subgraph<'a, T> {
 
     pub fn allocate_subgraph(
         allocator: &mut impl ArenaAllocator,
-        subgraph: &tflite::SubGraph<'a>,
-        buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
+        subgraph: &TFLiteSubGraph<'a>,
+        operators: &TFLiteOperators<'a>,
+        operator_codes: &TFLiteOperatorCodes<'a>,
+        buffers: &TFLiteBuffers<'a>,
     ) -> Result<Self> {
         let tensors = Self::allocate_eval_tensors(
             allocator, subgraph, buffers,
         )?;
 
-        println!("xxxxx {:?}", tensors);
-        for (i, tensor) in tensors.iter().enumerate() {
-            println!("{}, tensor: {:?}", i, tensor);
-        }
-        return Err(FailedToCreateGraph);
-    }
+        let node_and_regstrations = unsafe {
+            Self::allocate_node_and_regstrations(
+                allocator,
+                operators,
+                operator_codes,
+            )?
+        };
 
-    unsafe fn allocate_node_and_regstrations() -> Result<()>
-    {
-        todo!()
+        Ok(Self {
+            node_and_regstrations,
+            tensors,
+        })
     }
 
     fn allocate_eval_tensors(
         allocator: &mut impl ArenaAllocator,
-        subgraph: &tflite::SubGraph<'a>,
-        buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
+        subgraph: &TFLiteSubGraph<'a>,
+        buffers: &TFLiteBuffers<'a>,
     ) -> Result<&'a mut [BLiteArray<'a, T>]> {
         // size of allocated tensors
         let tensors_size =
@@ -100,12 +113,58 @@ impl<'a, T: Debug> Subgraph<'a, T> {
             Err(NotFoundTensor)
         }
     }
+
+    unsafe fn allocate_node_and_regstrations(
+        allocator: &mut impl ArenaAllocator,
+        operators: &TFLiteOperators<'a>,
+        operator_codes: &TFLiteOperatorCodes<'a>,
+    ) -> Result<&'a [(BLiteNode<'a>, Regstration)]> {
+        let node_and_registrations_row_ptr = allocator
+            .alloc(
+                size_of::<(BLiteNode<'_>, Regstration)>()
+                    * operators.len(),
+                align_of::<(BLiteNode<'_>, Regstration)>(),
+            )?;
+        let node_and_registrations = from_raw_parts_mut(
+            node_and_registrations_row_ptr
+                as *mut (BLiteNode<'_>, Regstration),
+            operators.len(),
+        );
+
+        for (i, op) in operators.iter().enumerate() {
+            let inputs = op.inputs().unwrap();
+            let outputs = op.outputs().unwrap();
+            let node =
+                Self::allocate_node(&inputs, &outputs)?;
+            let regstration = Self::alloc_regstration()?;
+            node_and_registrations[i] = (node, regstration);
+        }
+
+        Ok(node_and_registrations)
+    }
+
+    unsafe fn allocate_node(
+        inputs: &Vector<'a, i32>,
+        outputs: &Vector<'a, i32>,
+    ) -> Result<BLiteNode<'a>> {
+        let node_inputs = from_tflite_vector(&inputs);
+        let node_outputs = from_tflite_vector(&outputs);
+        Ok(BLiteNode {
+            inputs: node_inputs,
+            outputs: node_outputs,
+        })
+    }
+
+    unsafe fn alloc_regstration() -> Result<Regstration> {
+        todo!();
+        Ok(Regstration::default())
+    }
 }
 
 #[derive(Debug)]
 pub struct BLiteNode<'a> {
-    inputs: &'a [usize],
-    outputs: &'a [usize],
-    intermidiates: Option<&'a [usize]>,
-    temporaries: Option<&'a [usize]>,
+    inputs: &'a [i32],
+    outputs: &'a [i32],
+    // intermidiates: Option<&'a [usize]>,
+    // temporaries: Option<&'a [usize]>,
 }

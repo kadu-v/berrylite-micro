@@ -21,6 +21,17 @@ impl Regstration {
         Self { eval }
     }
 
+    pub fn default() -> Self {
+        Self { eval: Self::eval }
+    }
+
+    pub fn eval<'a>(
+        context: &BLiteContext,
+        node: &BLiteNode<'a>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
     pub fn call_eval<'a>(
         &self,
         context: &BLiteContext,
@@ -36,7 +47,7 @@ impl Debug for Regstration {
         &self,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        writeln!(f, "Op {{ eval..., }}")?;
+        write!(f, "Op {{ eval..., }}")?;
         Ok(())
     }
 }
