@@ -9,9 +9,13 @@ use berrylite::tflite_schema_generated::tflite;
 use flatbuffers;
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
-// const BUFFER: &[u8; 300568] = include_bytes!("../models/person_detect.tflite");
+// const BUFFER: &[u8; 300568] =
+//     include_bytes!("../models/person_detect.tflite");
 
-const ARENA_SIZE: usize = 3000;
+// const BUFFER: &[u8; 41240] =
+//     include_bytes!("../models/trained_lstm.tflite");
+
+const ARENA_SIZE: usize = 1024 * 256;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn main() {
@@ -71,6 +75,7 @@ fn main() {
                 .unwrap();
         println!("{:?}", array);
 
+        println!("===============================================");
         let xsubgraph =
             Subgraph::<f32, Ops>::allocate_subgraph(
                 &mut allocator,
@@ -78,9 +83,16 @@ fn main() {
                 &buffers,
             );
         println!("{:?}", xsubgraph);
+
+        // println!("{:?}", model);
         // println!("{:?}", subgraph);
     }
 
+    let operators = subgraph.operators().unwrap();
+    for op in operators {
+        println!("{:?}", op);
+    }
+    // // println!("{:?}", operators);
     // for (i, tensor) in tensors.iter().enumerate() {
     //     let buffer = buffers.get(tensor.buffer() as usize);
     //     println!("{}", i);

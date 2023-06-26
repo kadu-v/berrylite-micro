@@ -66,22 +66,42 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
     }
 
     pub unsafe fn from_tflite_buffer(
+        allocator: &mut impl ArenaAllocator,
         buffer: Buffer,
         shape: Vector<'a, i32>,
-    ) -> Option<Self> {
+    ) -> Result<Self> {
         if let Some(buffer_data) = buffer.data() {
             let data =
-                Self::from_tflite_vector(buffer_data);
+                Self::from_tflite_vector_mut(buffer_data);
             let dims = Self::from_tflite_vector(shape);
-            return Some(Self { data, dims });
+            Ok(Self { data, dims })
         } else {
-            return None;
+            let size = shape
+                .iter()
+                .fold(1usize, |x, acc| x * acc as usize);
+            let dims = Self::from_tflite_vector(shape);
+            Self::new(allocator, size, dims)
         }
     }
 
     // This functuion is used for tflite flatbeffer's vector only
     // because of chainging lifetims 'b to 'a
     pub unsafe fn from_tflite_vector<'b, S, U>(
+        vector: Vector<'b, S>,
+    ) -> &'a [U] {
+        let bytes = vector.bytes();
+        let data = unsafe {
+            core::slice::from_raw_parts(
+                bytes.as_ptr() as *const U,
+                bytes.len() / core::mem::size_of::<U>(),
+            )
+        };
+        return data;
+    }
+
+    // This functuion is used for tflite flatbeffer's vector only
+    // because of chainging lifetims 'b to 'a
+    pub unsafe fn from_tflite_vector_mut<'b, S, U>(
         vector: Vector<'b, S>,
     ) -> &'a mut [U] {
         let bytes = vector.bytes();
@@ -91,7 +111,6 @@ impl<'a, T: Debug> BLiteArray<'a, T> {
                 bytes.len() / core::mem::size_of::<U>(),
             )
         };
-
         return data;
     }
 

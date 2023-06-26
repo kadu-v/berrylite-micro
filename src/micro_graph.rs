@@ -16,7 +16,7 @@ use core::{
 #[derive(Debug)]
 pub struct Subgraph<'a, T: Debug, R: Regstration<'a, T>> {
     node_and_regstrations: &'a [(BLiteNode<'a>, &'a R)],
-    tensors: &'a mut [Option<BLiteArray<'a, T>>],
+    tensors: &'a mut [BLiteArray<'a, T>],
 }
 
 impl<'a, T: Debug, R: Regstration<'a, T>>
@@ -27,7 +27,7 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
             BLiteNode<'a>,
             &'a R,
         )],
-        tensors: &'a mut [Option<BLiteArray<'a, T>>],
+        tensors: &'a mut [BLiteArray<'a, T>],
     ) -> Self {
         Self {
             node_and_regstrations,
@@ -43,6 +43,11 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         let tensors = Self::allocate_eval_tensors(
             allocator, subgraph, buffers,
         )?;
+
+        println!("xxxxx {:?}", tensors);
+        for (i, tensor) in tensors.iter().enumerate() {
+            println!("{}, tensor: {:?}", i, tensor);
+        }
         return Err(FailedToCreateGraph);
     }
 
@@ -50,7 +55,7 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         allocator: &mut impl ArenaAllocator,
         subgraph: &tflite::SubGraph<'a>,
         buffers: &Vector<'_, ForwardsUOffset<Buffer<'_>>>,
-    ) -> Result<&'a mut [Option<BLiteArray<'a, T>>]> {
+    ) -> Result<&'a mut [BLiteArray<'a, T>]> {
         // size of allocated tensors
         let tensors_size =
             subgraph.tensors().unwrap().len();
@@ -58,13 +63,13 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
         // Note that tensors
         let tensors = unsafe {
             match allocator.alloc(
-                size_of::<Option<BLiteArray<'a, T>>>()
+                size_of::<BLiteArray<'a, T>>()
                     * tensors_size,
-                align_of::<Option<BLiteArray<'a, T>>>(),
+                align_of::<BLiteArray<'a, T>>(),
             ) {
                 Ok(tensors_row_ptr) => from_raw_parts_mut(
                     tensors_row_ptr
-                        as *mut Option<BLiteArray<'a, T>>,
+                        as *mut BLiteArray<'a, T>,
                     tensors_size,
                 ),
                 Err(err) => return Err(err),
@@ -81,8 +86,8 @@ impl<'a, T: Debug, R: Regstration<'a, T>>
                 let dims = tensor.shape().unwrap();
                 let tflite_tensor = unsafe {
                     BLiteArray::from_tflite_buffer(
-                        buffer, dims,
-                    )
+                        allocator, buffer, dims,
+                    )?
                 };
                 tensors[i] = tflite_tensor;
             }
