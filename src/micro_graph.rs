@@ -3,6 +3,7 @@ use flatbuffers::{ForwardsUOffset, Vector};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::BLiteArray;
 use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_op_resolver::BLiteOpResorlver;
 use crate::micro_registration::BLiteRegstration;
 use crate::micro_slice::from_tflite_vector;
 use crate::tflite_schema_generated::tflite::{
@@ -43,8 +44,9 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
         }
     }
 
-    pub fn allocate_subgraph(
+    pub fn allocate_subgraph<const N: usize>(
         allocator: &mut impl ArenaAllocator,
+        op_resolver: &BLiteOpResorlver<N>,
         subgraph: &TFLiteSubGraph<'a>,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
@@ -56,6 +58,7 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
 
         let node_and_regstrations = unsafe {
             Self::allocate_node_and_regstrations(
+                op_resolver,
                 allocator,
                 operators,
                 operator_codes,
@@ -114,7 +117,10 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
         }
     }
 
-    unsafe fn allocate_node_and_regstrations(
+    unsafe fn allocate_node_and_regstrations<
+        const N: usize,
+    >(
+        op_resolver: &BLiteOpResorlver<N>,
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
@@ -138,6 +144,7 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
             let node =
                 Self::allocate_node(&inputs, &outputs)?;
             let regstration = Self::alloc_regstration(
+                op_resolver,
                 operators,
                 operator_codes,
             )?;
@@ -159,7 +166,8 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
         })
     }
 
-    unsafe fn alloc_regstration(
+    unsafe fn alloc_regstration<const N: usize>(
+        op_resolver: &BLiteOpResorlver<N>,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
     ) -> Result<BLiteRegstration> {
@@ -171,13 +179,12 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
 
             let op_code = operator_codes.get(idx as usize);
             let builtin_code = op_code.builtin_code();
+            let blite_op =
+                op_resolver.find_op(&builtin_code)?;
+            let regstration = blite_op.get_regstration();
+            return Ok(regstration);
         }
-        Ok(BLiteRegstration::default())
-    }
-
-    fn get_regstration_from_op_code(
-    ) -> Result<BLiteRegstration> {
-        todo!()
+        Err(NotFoundRegstration)
     }
 }
 

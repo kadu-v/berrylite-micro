@@ -13,6 +13,7 @@ pub enum BLiteError {
     NotFoundTensor,
     NotFoundBufferData,
     MissingRegstration,
+    NotFoundRegstration,
 
     // micro operator resolver
     NotFoundOperator,

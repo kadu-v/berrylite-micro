@@ -13,6 +13,10 @@ impl BLiteOperator {
         self.regstration.op_code
     }
 
+    pub fn get_regstration(&self) -> BLiteRegstration {
+        self.regstration
+    }
+
     pub fn fully_connected() -> Self {
         Self {
             regstration: OpFullyConnected::regstration(),
