@@ -1,28 +1,34 @@
 use core::fmt::Debug;
-use core::task::Context;
 
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::Result;
 use crate::micro_graph::BLiteNode;
-pub struct Regstration {
-    eval: for<'a> fn(
+
+#[derive(Clone, Copy)]
+pub struct BLiteRegstration {
+    pub op_code: i32,
+    pub eval: for<'a> fn(
         context: &BLiteContext,
         node: &BLiteNode<'a>,
     ) -> Result<()>,
 }
 
-impl Regstration {
+impl BLiteRegstration {
     pub fn new(
+        op_code: i32,
         eval: for<'a> fn(
             context: &BLiteContext,
             node: &BLiteNode<'a>,
         ) -> Result<()>,
     ) -> Self {
-        Self { eval }
+        Self { op_code, eval }
     }
 
     pub fn default() -> Self {
-        Self { eval: Self::eval }
+        Self {
+            op_code: 0,
+            eval: Self::eval,
+        }
     }
 
     pub fn eval<'a>(
@@ -42,12 +48,16 @@ impl Regstration {
     }
 }
 
-impl Debug for Regstration {
+impl Debug for BLiteRegstration {
     fn fmt(
         &self,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
-        write!(f, "Op {{ eval..., }}")?;
+        write!(
+            f,
+            "Op {{ op_code: {} eval..., }}",
+            self.op_code
+        )?;
         Ok(())
     }
 }

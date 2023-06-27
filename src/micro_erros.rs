@@ -12,4 +12,9 @@ pub enum BLiteError {
     FailedToCreateGraph,
     NotFoundTensor,
     NotFoundBufferData,
+    MissingRegstration,
+
+    // micro operator resolver
+    NotFoundOperator,
+    OpIndexOutOfBound,
 }

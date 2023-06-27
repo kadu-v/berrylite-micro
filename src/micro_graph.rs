@@ -3,7 +3,7 @@ use flatbuffers::{ForwardsUOffset, Vector};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::BLiteArray;
 use crate::micro_erros::{BLiteError::*, Result};
-use crate::micro_ops::Regstration;
+use crate::micro_registration::BLiteRegstration;
 use crate::micro_slice::from_tflite_vector;
 use crate::tflite_schema_generated::tflite::{
     self, Buffer, Operator, OperatorCode,
@@ -23,17 +23,17 @@ type TFLiteBuffers<'a> =
     Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
 #[derive(Debug)]
-pub struct Subgraph<'a, T: Debug + 'a> {
+pub struct BLiteSubgraph<'a, T: Debug + 'a> {
     pub node_and_regstrations:
-        &'a [(BLiteNode<'a>, Regstration)],
+        &'a [(BLiteNode<'a>, BLiteRegstration)],
     pub tensors: &'a mut [BLiteArray<'a, T>],
 }
 
-impl<'a, T: Debug + 'a> Subgraph<'a, T> {
+impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
     pub fn new(
         node_and_regstrations: &'a [(
             BLiteNode<'a>,
-            Regstration,
+            BLiteRegstration,
         )],
         tensors: &'a mut [BLiteArray<'a, T>],
     ) -> Self {
@@ -118,16 +118,17 @@ impl<'a, T: Debug + 'a> Subgraph<'a, T> {
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
-    ) -> Result<&'a [(BLiteNode<'a>, Regstration)]> {
+    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegstration)]>
+    {
         let node_and_registrations_row_ptr = allocator
             .alloc(
-                size_of::<(BLiteNode<'_>, Regstration)>()
+                size_of::<(BLiteNode<'_>, BLiteRegstration)>()
                     * operators.len(),
-                align_of::<(BLiteNode<'_>, Regstration)>(),
+                align_of::<(BLiteNode<'_>, BLiteRegstration)>(),
             )?;
         let node_and_registrations = from_raw_parts_mut(
             node_and_registrations_row_ptr
-                as *mut (BLiteNode<'_>, Regstration),
+                as *mut (BLiteNode<'_>, BLiteRegstration),
             operators.len(),
         );
 
@@ -136,7 +137,10 @@ impl<'a, T: Debug + 'a> Subgraph<'a, T> {
             let outputs = op.outputs().unwrap();
             let node =
                 Self::allocate_node(&inputs, &outputs)?;
-            let regstration = Self::alloc_regstration()?;
+            let regstration = Self::alloc_regstration(
+                operators,
+                operator_codes,
+            )?;
             node_and_registrations[i] = (node, regstration);
         }
 
@@ -155,9 +159,25 @@ impl<'a, T: Debug + 'a> Subgraph<'a, T> {
         })
     }
 
-    unsafe fn alloc_regstration() -> Result<Regstration> {
-        todo!();
-        Ok(Regstration::default())
+    unsafe fn alloc_regstration(
+        operators: &TFLiteOperators<'a>,
+        operator_codes: &TFLiteOperatorCodes<'a>,
+    ) -> Result<BLiteRegstration> {
+        for (i, op) in operators.iter().enumerate() {
+            let idx = op.opcode_index();
+            if idx as usize >= operator_codes.len() {
+                return Err(MissingRegstration);
+            }
+
+            let op_code = operator_codes.get(idx as usize);
+            let builtin_code = op_code.builtin_code();
+        }
+        Ok(BLiteRegstration::default())
+    }
+
+    fn get_regstration_from_op_code(
+    ) -> Result<BLiteRegstration> {
+        todo!()
     }
 }
 
