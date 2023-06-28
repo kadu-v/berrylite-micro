@@ -1,3 +1,4 @@
+use berrylite::kernel::micro_operator::op_fully_connected::OpFullyConnected;
 use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_graph::*;
@@ -7,7 +8,7 @@ use berrylite::tflite_schema_generated::tflite;
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] =
-// include_bytes!("../models/person_detect.tflite");
+//     include_bytes!("../models/person_detect.tflite");
 
 // const BUFFER: &[u8; 41240] =
 //     include_bytes!("../models/trained_lstm.tflite");
@@ -22,6 +23,16 @@ fn main() {
     let subgraph = subgraphs.get(0);
     let buffers = model.buffers().unwrap();
 
+    let operators = subgraph.operators().unwrap();
+    for op in operators {
+        let options = op.builtin_options_type();
+        let option = op
+            .builtin_options_as_fully_connected_options()
+            .unwrap();
+        // let x = option.fused_activation_function();
+        println!("{:?}", op);
+    }
+
     unsafe {
         let mut allocator =
             BumpArenaAllocator::new(&mut ARENA);
@@ -29,7 +40,7 @@ fn main() {
         let mut op_resolver =
             BLiteOpResorlver::<1, f32>::new();
         op_resolver
-            .add_op(BLiteOperator::fully_connected());
+            .add_op(OpFullyConnected::fully_connected());
 
         let operators = subgraph.operators().unwrap();
 

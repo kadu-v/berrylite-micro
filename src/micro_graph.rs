@@ -4,6 +4,7 @@ use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResorlver;
 use crate::micro_registration::BLiteRegstration;
 use crate::micro_slice::from_tflite_vector;
@@ -32,16 +33,16 @@ type TFLiteBuffers<'a> =
 #[derive(Debug)]
 pub struct BLiteSubgraph<'a, T>
 where
-    T: ArrayElem + 'a,
+    T: ArrayElem<T> + 'a,
 {
     pub node_and_regstrations:
         &'a [(BLiteNode<'a>, BLiteRegstration<T>)],
-    pub tensors: &'a [BLiteTensor<'a, T>],
+    pub tensors: &'a mut [BLiteTensor<'a, T>],
 }
 
 impl<'a, T> BLiteSubgraph<'a, T>
 where
-    T: ArrayElem + 'a,
+    T: ArrayElem<T> + 'a,
 {
     pub fn new(
         node_and_regstrations: &'a [(
@@ -201,7 +202,8 @@ where
             let builtin_code = op_code.builtin_code();
             let blite_op =
                 op_resolver.find_op(&builtin_code)?;
-            let regstration = blite_op.get_regstration();
+            let mut regstration =
+                blite_op.get_regstration();
             return Ok(regstration);
         }
         Err(NotFoundRegstration)
@@ -217,21 +219,13 @@ where
             node_and_registrations.iter()
         {
             let tensors = unsafe {
-                &mut *((self.tensors
-                    as *const [BLiteTensor<_>])
+                &mut *(self.tensors
                     as *mut [BLiteTensor<_>])
             };
+            let builtin_option = regstration.builtin_option;
             let eval = regstration.eval;
-            eval(&ctx, tensors, node)?;
+            eval(&ctx, tensors, node, builtin_option)?;
         }
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub struct BLiteNode<'a> {
-    pub inputs: &'a [i32],
-    pub outputs: &'a [i32],
-    // intermidiates: Option<&'a [usize]>,
-    // temporaries: Option<&'a [usize]>,
 }

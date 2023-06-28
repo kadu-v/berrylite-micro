@@ -18,4 +18,7 @@ pub enum BLiteError {
     // micro operator resolver
     NotFoundOperator,
     OpIndexOutOfBound,
+
+    // micro fully connected
+    NotInitializeActvation,
 }

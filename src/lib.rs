@@ -7,6 +7,7 @@ pub mod micro_context;
 pub mod micro_erros;
 pub mod micro_graph;
 pub mod micro_interpreter;
+pub mod micro_node;
 pub mod micro_op_resolver;
 pub mod micro_registration;
 pub mod micro_slice;

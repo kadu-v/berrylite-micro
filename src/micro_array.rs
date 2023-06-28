@@ -8,11 +8,16 @@ use crate::micro_slice::{
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
-use core::ops::Add;
+use core::ops::{Add, Mul};
 use core::slice::from_raw_parts_mut;
 
 /*-----------------------------------------------------------------------------*/
-pub trait ArrayElem = Debug + Clone + Copy + Add;
+pub trait ArrayElem<T> = Debug
+    + Clone
+    + Copy
+    + Add<Output = T>
+    + Mul<Output = T>
+    + Default;
 
 #[derive(Debug)]
 pub struct BLiteArray<'a, T>
@@ -23,7 +28,7 @@ where
     pub dims: &'a [i32],
 }
 
-impl<'a, T: ArrayElem> BLiteArray<'a, T> {
+impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
     // This method does not initialize the elements of data
     pub unsafe fn new(
         allocator: &mut impl ArenaAllocator,

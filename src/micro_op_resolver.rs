@@ -8,13 +8,15 @@ use crate::tflite_schema_generated::tflite::BuiltinOperator;
 #[derive(Debug, Clone)]
 pub struct BLiteOpResorlver<const N: usize, T>
 where
-    T: ArrayElem,
+    T: ArrayElem<T>,
 {
     idx: usize,
     operators: [Option<BLiteOperator<T>>; N],
 }
 
-impl<const N: usize, T: ArrayElem> BLiteOpResorlver<N, T> {
+impl<const N: usize, T: ArrayElem<T>>
+    BLiteOpResorlver<N, T>
+{
     pub const fn new() -> Self {
         Self {
             idx: 0,
@@ -45,6 +47,7 @@ impl<const N: usize, T: ArrayElem> BLiteOpResorlver<N, T> {
         }
 
         self.operators[self.idx] = Some(operator);
+        self.idx += 1;
         return Ok(());
     }
 }
