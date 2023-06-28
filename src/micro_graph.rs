@@ -24,17 +24,23 @@ type TFLiteBuffers<'a> =
     Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
 #[derive(Debug)]
-pub struct BLiteSubgraph<'a, T: Debug + 'a> {
+pub struct BLiteSubgraph<'a, T>
+where
+    T: Debug + Clone + Copy + 'a,
+{
     pub node_and_regstrations:
-        &'a [(BLiteNode<'a>, BLiteRegstration)],
+        &'a [(BLiteNode<'a>, BLiteRegstration<T>)],
     pub tensors: &'a mut [BLiteArray<'a, T>],
 }
 
-impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
+impl<'a, T> BLiteSubgraph<'a, T>
+where
+    T: Debug + Clone + Copy + 'a,
+{
     pub fn new(
         node_and_regstrations: &'a [(
             BLiteNode<'a>,
-            BLiteRegstration,
+            BLiteRegstration<T>,
         )],
         tensors: &'a mut [BLiteArray<'a, T>],
     ) -> Self {
@@ -46,7 +52,7 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
 
     pub fn allocate_subgraph<const N: usize>(
         allocator: &mut impl ArenaAllocator,
-        op_resolver: &BLiteOpResorlver<N>,
+        op_resolver: &BLiteOpResorlver<N, T>,
         subgraph: &TFLiteSubGraph<'a>,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
@@ -120,21 +126,29 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
     unsafe fn allocate_node_and_regstrations<
         const N: usize,
     >(
-        op_resolver: &BLiteOpResorlver<N>,
+        op_resolver: &BLiteOpResorlver<N, T>,
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
-    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegstration)]>
+    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegstration<T>)]>
     {
         let node_and_registrations_row_ptr = allocator
             .alloc(
-                size_of::<(BLiteNode<'_>, BLiteRegstration)>()
-                    * operators.len(),
-                align_of::<(BLiteNode<'_>, BLiteRegstration)>(),
+                size_of::<(
+                    BLiteNode<'_>,
+                    BLiteRegstration<T>,
+                )>() * operators.len(),
+                align_of::<(
+                    BLiteNode<'_>,
+                    BLiteRegstration<T>,
+                )>(),
             )?;
         let node_and_registrations = from_raw_parts_mut(
             node_and_registrations_row_ptr
-                as *mut (BLiteNode<'_>, BLiteRegstration),
+                as *mut (
+                    BLiteNode<'_>,
+                    BLiteRegstration<T>,
+                ),
             operators.len(),
         );
 
@@ -167,10 +181,10 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
     }
 
     unsafe fn alloc_regstration<const N: usize>(
-        op_resolver: &BLiteOpResorlver<N>,
+        op_resolver: &BLiteOpResorlver<N, T>,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
-    ) -> Result<BLiteRegstration> {
+    ) -> Result<BLiteRegstration<T>> {
         for (i, op) in operators.iter().enumerate() {
             let idx = op.opcode_index();
             if idx as usize >= operator_codes.len() {
@@ -190,8 +204,8 @@ impl<'a, T: Debug + 'a> BLiteSubgraph<'a, T> {
 
 #[derive(Debug)]
 pub struct BLiteNode<'a> {
-    inputs: &'a [i32],
-    outputs: &'a [i32],
+    pub inputs: &'a [i32],
+    pub outputs: &'a [i32],
     // intermidiates: Option<&'a [usize]>,
     // temporaries: Option<&'a [usize]>,
 }

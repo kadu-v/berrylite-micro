@@ -1,19 +1,26 @@
 pub mod op_fully_connected;
 
 use crate::micro_registration::BLiteRegstration;
+use core::fmt::Debug;
 use op_fully_connected::OpFullyConnected;
 
 #[derive(Debug, Clone, Copy)]
-pub struct BLiteOperator {
-    regstration: BLiteRegstration,
+pub struct BLiteOperator<T>
+where
+    T: Debug + Clone + Copy,
+{
+    regstration: BLiteRegstration<T>,
 }
 
-impl BLiteOperator {
+impl<T> BLiteOperator<T>
+where
+    T: Debug + Clone + Copy,
+{
     pub fn get_op_code(&self) -> i32 {
         self.regstration.op_code
     }
 
-    pub fn get_regstration(&self) -> BLiteRegstration {
+    pub fn get_regstration(&self) -> BLiteRegstration<T> {
         self.regstration
     }
 

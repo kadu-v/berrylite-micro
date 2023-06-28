@@ -1,17 +1,13 @@
-use std::mem::{align_of, size_of};
-
-use berrylite::micro_allocator::ArenaAllocator;
+use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_array::BLiteArray;
 use berrylite::micro_graph::*;
 use berrylite::micro_op_resolver::BLiteOpResorlver;
-use berrylite::micro_operator::BLiteOperator;
 use berrylite::tflite_schema_generated::tflite;
-use flatbuffers;
+
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
 // const BUFFER: &[u8; 300568] =
-//     include_bytes!("../models/person_detect.tflite");
+// include_bytes!("../models/person_detect.tflite");
 
 // const BUFFER: &[u8; 41240] =
 //     include_bytes!("../models/trained_lstm.tflite");
@@ -30,7 +26,8 @@ fn main() {
         let mut allocator =
             BumpArenaAllocator::new(&mut ARENA);
 
-        let mut op_resolver = BLiteOpResorlver::<1>::new();
+        let mut op_resolver =
+            BLiteOpResorlver::<1, f32>::new();
         op_resolver
             .add_op(BLiteOperator::fully_connected());
 
@@ -53,8 +50,8 @@ fn main() {
             println!("{:?}", e);
         }
 
-        for e in xsubgraph.tensors {
-            println!("{:?}", e);
+        for (i, e) in xsubgraph.tensors.iter().enumerate() {
+            println!("{} -> {:?}", i, e);
         }
     }
 }

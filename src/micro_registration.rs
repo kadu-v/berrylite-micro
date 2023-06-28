@@ -5,19 +5,22 @@ use crate::micro_erros::Result;
 use crate::micro_graph::BLiteNode;
 
 #[derive(Clone, Copy)]
-pub struct BLiteRegstration {
+pub struct BLiteRegstration<T>
+where
+    T: Debug + Clone + Copy,
+{
     pub op_code: i32,
     pub eval: for<'a> fn(
-        context: &BLiteContext,
+        context: &BLiteContext<'a, T>,
         node: &BLiteNode<'a>,
     ) -> Result<()>,
 }
 
-impl BLiteRegstration {
+impl<T: Debug + Clone + Copy> BLiteRegstration<T> {
     pub fn new(
         op_code: i32,
         eval: for<'a> fn(
-            context: &BLiteContext,
+            context: &BLiteContext<'a, T>,
             node: &BLiteNode<'a>,
         ) -> Result<()>,
     ) -> Self {
@@ -32,7 +35,7 @@ impl BLiteRegstration {
     }
 
     pub fn eval<'a>(
-        context: &BLiteContext,
+        context: &BLiteContext<'a, T>,
         node: &BLiteNode<'a>,
     ) -> Result<()> {
         Ok(())
@@ -40,7 +43,7 @@ impl BLiteRegstration {
 
     pub fn call_eval<'a>(
         &self,
-        context: &BLiteContext,
+        context: &BLiteContext<'a, T>,
         node: &BLiteNode<'a>,
     ) -> Result<()> {
         let eval = self.eval;
@@ -48,7 +51,9 @@ impl BLiteRegstration {
     }
 }
 
-impl Debug for BLiteRegstration {
+impl<T: Debug + Clone + Copy> Debug
+    for BLiteRegstration<T>
+{
     fn fmt(
         &self,
         f: &mut core::fmt::Formatter<'_>,
