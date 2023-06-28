@@ -30,11 +30,12 @@ where
         self.regstration
     }
 
-    // pub fn get_parser(
-    //     &self,
-    // ) -> fn(op: Operator) -> BLiteBuiltinOption<T> {
-    //     self.parser
-    // }
+    pub fn get_parser(
+        &self,
+    ) -> fn(op: Operator) -> Result<BLiteBuiltinOption<T>>
+    {
+        self.parser
+    }
 }
 
 impl<T: ArrayElem<T>> Debug for BLiteOperator<T> {

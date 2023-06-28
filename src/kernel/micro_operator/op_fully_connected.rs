@@ -1,3 +1,4 @@
+use crate::kernel::micro_activation::activation_relu::relu;
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption, BLiteBuiltinOption::*,
 };
@@ -32,7 +33,24 @@ impl OpFullyConnected {
     ) -> Result<BLiteBuiltinOption<T>> {
         let builtin_option =
             op.builtin_options_as_fully_connected_options();
-        todo!()
+        let mut op_code = -1;
+        if let Some(builtin_option) = builtin_option {
+            op_code = builtin_option
+                .fused_activation_function()
+                .0 as i32;
+        }
+        println!("activation opcode: {}", op_code);
+        if op_code == 1 {
+            Ok(BLiteBuiltinOption::FullyConnectedOptions {
+                op_code: op_code,
+                activation: Some(relu),
+            })
+        } else {
+            Ok(BLiteBuiltinOption::FullyConnectedOptions {
+                op_code: op_code,
+                activation: None,
+            })
+        }
     }
 
     pub fn regstration<T: ArrayElem<T>>(
@@ -63,9 +81,10 @@ impl OpFullyConnected {
         let mut output = tensors[idx_output].borrow_mut();
 
         let activation = match builtin_option {
-            FullyConnectedOptions { activation } => {
-                activation
-            }
+            FullyConnectedOptions {
+                op_code: _,
+                activation,
+            } => activation,
             NotInitialize => {
                 return Err(NotInitializeActvation)
             }
@@ -94,12 +113,18 @@ impl OpFullyConnected {
                     total + bias.data[out_d];
             }
         }
-
+        println!("=============================================================");
         if let Some(activation) = activation {
+            println!("activaton!!!");
             for i in 0..output.data.len() {
                 output.data[i] = activation(output.data[i]);
             }
         }
+        println!("input->  {}, {:?}", idx_input, input);
+        println!("filter-> {}, {:?}", idx_filter, filter);
+        println!("bias->   {}, {:?}", idx_bias, bias);
+        println!("ouput->  {}, {:?}", idx_output, output);
+        println!("=============================================================");
 
         Ok(())
     }

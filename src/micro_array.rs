@@ -17,6 +17,8 @@ pub trait ArrayElem<T> = Debug
     + Copy
     + Add<Output = T>
     + Mul<Output = T>
+    + PartialEq
+    + PartialOrd
     + Default;
 
 #[derive(Debug)]

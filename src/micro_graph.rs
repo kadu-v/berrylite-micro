@@ -166,7 +166,7 @@ where
                 Self::allocate_node(&inputs, &outputs)?;
             let regstration = Self::alloc_regstration(
                 op_resolver,
-                operators,
+                &op,
                 operator_codes,
             )?;
             node_and_registrations[i] = (node, regstration);
@@ -189,24 +189,26 @@ where
 
     unsafe fn alloc_regstration<const N: usize>(
         op_resolver: &BLiteOpResorlver<N, T>,
-        operators: &TFLiteOperators<'a>,
+        op: &Operator<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
     ) -> Result<BLiteRegstration<T>> {
-        for (i, op) in operators.iter().enumerate() {
-            let idx = op.opcode_index();
-            if idx as usize >= operator_codes.len() {
-                return Err(MissingRegstration);
-            }
-
-            let op_code = operator_codes.get(idx as usize);
-            let builtin_code = op_code.builtin_code();
-            let blite_op =
-                op_resolver.find_op(&builtin_code)?;
-            let mut regstration =
-                blite_op.get_regstration();
-            return Ok(regstration);
+        println!("xxx -> {:?}", op);
+        let idx = op.opcode_index();
+        if idx as usize >= operator_codes.len() {
+            return Err(MissingRegstration);
         }
-        Err(NotFoundRegstration)
+
+        let op_code = operator_codes.get(idx as usize);
+        let builtin_code = op_code.builtin_code();
+        let blite_op =
+            op_resolver.find_op(&builtin_code)?;
+        let mut regstration = blite_op.get_regstration();
+        let parser = blite_op.get_parser();
+        let builtin_option = parser(*op).unwrap();
+
+        regstration.builtin_option = builtin_option;
+
+        return Ok(regstration);
     }
 
     pub fn invoke(&mut self) -> Result<()> {
