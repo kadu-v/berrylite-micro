@@ -1,21 +1,20 @@
 use core::fmt::Debug;
 
 use crate::kernel::micro_operator::BLiteOperator;
+use crate::micro_array::ArrayElem;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::tflite_schema_generated::tflite::BuiltinOperator;
 
 #[derive(Debug, Clone)]
 pub struct BLiteOpResorlver<const N: usize, T>
 where
-    T: Debug + Clone + Copy,
+    T: ArrayElem,
 {
     idx: usize,
     operators: [Option<BLiteOperator<T>>; N],
 }
 
-impl<const N: usize, T: Debug + Clone + Copy>
-    BLiteOpResorlver<N, T>
-{
+impl<const N: usize, T: ArrayElem> BLiteOpResorlver<N, T> {
     pub const fn new() -> Self {
         Self {
             idx: 0,

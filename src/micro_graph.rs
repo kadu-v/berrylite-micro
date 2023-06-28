@@ -1,20 +1,25 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_array::BLiteArray;
+use crate::micro_array::{ArrayElem, BLiteArray};
+use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_op_resolver::BLiteOpResorlver;
 use crate::micro_registration::BLiteRegstration;
 use crate::micro_slice::from_tflite_vector;
+use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::{
     self, Buffer, Operator, OperatorCode,
 };
+
+use core::cell::RefCell;
 use core::fmt::Debug;
 use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
 
+/*-----------------------------------------------------------------------------*/
 type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
 type TFLiteOperators<'a> =
     Vector<'a, ForwardsUOffset<Operator<'a>>>;
@@ -23,26 +28,27 @@ type TFLiteOperatorCodes<'a> =
 type TFLiteBuffers<'a> =
     Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
+/*-----------------------------------------------------------------------------*/
 #[derive(Debug)]
 pub struct BLiteSubgraph<'a, T>
 where
-    T: Debug + Clone + Copy + 'a,
+    T: ArrayElem + 'a,
 {
     pub node_and_regstrations:
         &'a [(BLiteNode<'a>, BLiteRegstration<T>)],
-    pub tensors: &'a mut [BLiteArray<'a, T>],
+    pub tensors: &'a [BLiteTensor<'a, T>],
 }
 
 impl<'a, T> BLiteSubgraph<'a, T>
 where
-    T: Debug + Clone + Copy + 'a,
+    T: ArrayElem + 'a,
 {
     pub fn new(
         node_and_regstrations: &'a [(
             BLiteNode<'a>,
             BLiteRegstration<T>,
         )],
-        tensors: &'a mut [BLiteArray<'a, T>],
+        tensors: &'a mut [BLiteTensor<'a, T>],
     ) -> Self {
         Self {
             node_and_regstrations,
@@ -81,7 +87,7 @@ where
         allocator: &mut impl ArenaAllocator,
         subgraph: &TFLiteSubGraph<'a>,
         buffers: &TFLiteBuffers<'a>,
-    ) -> Result<&'a mut [BLiteArray<'a, T>]> {
+    ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
         // size of allocated tensors
         let tensors_size =
             subgraph.tensors().unwrap().len();
@@ -89,13 +95,13 @@ where
         // Note that tensors
         let tensors = unsafe {
             match allocator.alloc(
-                size_of::<BLiteArray<'a, T>>()
+                size_of::<BLiteTensor<'a, T>>()
                     * tensors_size,
-                align_of::<BLiteArray<'a, T>>(),
+                align_of::<BLiteTensor<'a, T>>(),
             ) {
                 Ok(tensors_row_ptr) => from_raw_parts_mut(
                     tensors_row_ptr
-                        as *mut BLiteArray<'a, T>,
+                        as *mut BLiteTensor<'a, T>,
                     tensors_size,
                 ),
                 Err(err) => return Err(err),
@@ -115,7 +121,7 @@ where
                         allocator, buffer, dims,
                     )?
                 };
-                tensors[i] = tflite_tensor;
+                tensors[i] = RefCell::new(tflite_tensor);
             }
             Ok(tensors)
         } else {
@@ -199,6 +205,26 @@ where
             return Ok(regstration);
         }
         Err(NotFoundRegstration)
+    }
+
+    pub fn invoke(&mut self) -> Result<()> {
+        let node_and_registrations =
+            self.node_and_regstrations;
+
+        let ctx = BLiteContext::new();
+
+        for (node, regstration) in
+            node_and_registrations.iter()
+        {
+            let tensors = unsafe {
+                &mut *((self.tensors
+                    as *const [BLiteTensor<_>])
+                    as *mut [BLiteTensor<_>])
+            };
+            let eval = regstration.eval;
+            eval(&ctx, tensors, node)?;
+        }
+        Ok(())
     }
 }
 

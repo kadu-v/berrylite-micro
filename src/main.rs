@@ -35,7 +35,7 @@ fn main() {
 
         let operator_codes =
             model.operator_codes().unwrap();
-        let xsubgraph =
+        let mut xsubgraph =
             BLiteSubgraph::<f32>::allocate_subgraph(
                 &mut allocator,
                 &op_resolver,
@@ -45,6 +45,15 @@ fn main() {
                 &buffers,
             )
             .unwrap();
+
+        for e in xsubgraph.node_and_regstrations {
+            println!("{:?}", e);
+        }
+
+        for (i, e) in xsubgraph.tensors.iter().enumerate() {
+            println!("{} -> {:?}", i, e);
+        }
+        xsubgraph.invoke();
 
         for e in xsubgraph.node_and_regstrations {
             println!("{:?}", e);
