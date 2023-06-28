@@ -96,10 +96,14 @@ impl OpFullyConnected {
             filter.dims[filter.dims.len() - 2] as usize;
         let accum_depth =
             filter.dims[filter.dims.len() - 1] as usize;
+        println!(
+            "{} {} {}",
+            batches, output_depth, accum_depth
+        );
 
         for batch in 0..batches {
-            let mut total: T = Default::default();
             for out_d in 0..output_depth {
+                let mut total: T = Default::default();
                 for acc_d in 0..accum_depth {
                     total = total
                         + input.data
@@ -107,8 +111,21 @@ impl OpFullyConnected {
                             * filter.data[out_d
                                 * accum_depth
                                 + acc_d];
+                    println!(
+                        "{} {} {:?}                {:?}",
+                        batch * accum_depth + acc_d,
+                        out_d * accum_depth + acc_d,
+                        input.data
+                            [batch * accum_depth + acc_d],
+                        filter.data
+                            [out_d * accum_depth + acc_d]
+                    );
                 }
-
+                println!(
+                    " -> {}, total: {:?}",
+                    batch * output_depth + out_d,
+                    total
+                );
                 output.data[batch * output_depth + out_d] =
                     total + bias.data[out_d];
             }
