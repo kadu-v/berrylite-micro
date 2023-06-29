@@ -12,8 +12,8 @@ pub enum BLiteError {
     FailedToCreateGraph,
     NotFoundTensor,
     NotFoundBufferData,
-    MissingRegstration,
-    NotFoundRegstration,
+    MissingRegistration,
+    NotFoundRegistration,
 
     // micro operator resolver
     NotFoundOperator,

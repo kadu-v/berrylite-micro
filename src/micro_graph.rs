@@ -6,7 +6,7 @@ use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResorlver;
-use crate::micro_registration::BLiteRegstration;
+use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::{
@@ -35,8 +35,8 @@ pub struct BLiteSubgraph<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
-    pub node_and_regstrations:
-        &'a [(BLiteNode<'a>, BLiteRegstration<T>)],
+    pub node_and_registrations:
+        &'a [(BLiteNode<'a>, BLiteRegistration<T>)],
     pub tensors: &'a mut [BLiteTensor<'a, T>],
 }
 
@@ -45,14 +45,14 @@ where
     T: ArrayElem<T> + 'a,
 {
     pub fn new(
-        node_and_regstrations: &'a [(
+        node_and_registrations: &'a [(
             BLiteNode<'a>,
-            BLiteRegstration<T>,
+            BLiteRegistration<T>,
         )],
         tensors: &'a mut [BLiteTensor<'a, T>],
     ) -> Self {
         Self {
-            node_and_regstrations,
+            node_and_registrations,
             tensors,
         }
     }
@@ -69,8 +69,8 @@ where
             allocator, subgraph, buffers,
         )?;
 
-        let node_and_regstrations = unsafe {
-            Self::allocate_node_and_regstrations(
+        let node_and_registrations = unsafe {
+            Self::allocate_node_and_registrations(
                 op_resolver,
                 allocator,
                 operators,
@@ -79,7 +79,7 @@ where
         };
 
         Ok(Self {
-            node_and_regstrations,
+            node_and_registrations,
             tensors,
         })
     }
@@ -130,31 +130,31 @@ where
         }
     }
 
-    unsafe fn allocate_node_and_regstrations<
+    unsafe fn allocate_node_and_registrations<
         const N: usize,
     >(
         op_resolver: &BLiteOpResorlver<N, T>,
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
-    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegstration<T>)]>
+    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegistration<T>)]>
     {
         let node_and_registrations_row_ptr = allocator
             .alloc(
                 size_of::<(
                     BLiteNode<'_>,
-                    BLiteRegstration<T>,
+                    BLiteRegistration<T>,
                 )>() * operators.len(),
                 align_of::<(
                     BLiteNode<'_>,
-                    BLiteRegstration<T>,
+                    BLiteRegistration<T>,
                 )>(),
             )?;
         let node_and_registrations = from_raw_parts_mut(
             node_and_registrations_row_ptr
                 as *mut (
                     BLiteNode<'_>,
-                    BLiteRegstration<T>,
+                    BLiteRegistration<T>,
                 ),
             operators.len(),
         );
@@ -164,12 +164,13 @@ where
             let outputs = op.outputs().unwrap();
             let node =
                 Self::allocate_node(&inputs, &outputs)?;
-            let regstration = Self::alloc_regstration(
+            let registration = Self::alloc_registration(
                 op_resolver,
                 &op,
                 operator_codes,
             )?;
-            node_and_registrations[i] = (node, regstration);
+            node_and_registrations[i] =
+                (node, registration);
         }
 
         Ok(node_and_registrations)
@@ -187,45 +188,45 @@ where
         })
     }
 
-    unsafe fn alloc_regstration<const N: usize>(
+    unsafe fn alloc_registration<const N: usize>(
         op_resolver: &BLiteOpResorlver<N, T>,
         op: &Operator<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
-    ) -> Result<BLiteRegstration<T>> {
-        println!("xxx -> {:?}", op);
+    ) -> Result<BLiteRegistration<T>> {
         let idx = op.opcode_index();
         if idx as usize >= operator_codes.len() {
-            return Err(MissingRegstration);
+            return Err(MissingRegistration);
         }
 
         let op_code = operator_codes.get(idx as usize);
         let builtin_code = op_code.builtin_code();
         let blite_op =
             op_resolver.find_op(&builtin_code)?;
-        let mut regstration = blite_op.get_regstration();
+        let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
         let builtin_option = parser(*op).unwrap();
 
-        regstration.builtin_option = builtin_option;
+        registration.builtin_option = builtin_option;
 
-        return Ok(regstration);
+        return Ok(registration);
     }
 
     pub fn invoke(&mut self) -> Result<()> {
         let node_and_registrations =
-            self.node_and_regstrations;
+            self.node_and_registrations;
 
         let ctx = BLiteContext::new();
 
-        for (node, regstration) in
+        for (node, registration) in
             node_and_registrations.iter()
         {
             let tensors = unsafe {
                 &mut *(self.tensors
                     as *mut [BLiteTensor<_>])
             };
-            let builtin_option = regstration.builtin_option;
-            let eval = regstration.eval;
+            let builtin_option =
+                registration.builtin_option;
+            let eval = registration.eval;
             eval(&ctx, tensors, node, builtin_option)?;
         }
         Ok(())

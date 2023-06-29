@@ -2,7 +2,7 @@ pub mod op_fully_connected;
 
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;
-use crate::micro_registration::BLiteRegstration;
+use crate::micro_registration::BLiteRegistration;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
 
@@ -13,7 +13,7 @@ pub struct BLiteOperator<T>
 where
     T: ArrayElem<T>,
 {
-    regstration: BLiteRegstration<T>,
+    regstration: BLiteRegistration<T>,
     parser:
         fn(op: Operator) -> Result<BLiteBuiltinOption<T>>,
 }
@@ -26,7 +26,7 @@ where
         self.regstration.op_code
     }
 
-    pub fn get_regstration(&self) -> BLiteRegstration<T> {
+    pub fn get_registration(&self) -> BLiteRegistration<T> {
         self.regstration
     }
 

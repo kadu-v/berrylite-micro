@@ -7,7 +7,7 @@ use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::*;
 use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;
-use crate::micro_registration::BLiteRegstration;
+use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
@@ -54,8 +54,8 @@ impl OpFullyConnected {
     }
 
     pub fn regstration<T: ArrayElem<T>>(
-    ) -> BLiteRegstration<T> {
-        BLiteRegstration::new(
+    ) -> BLiteRegistration<T> {
+        BLiteRegistration::new(
             Self::OPCODE,
             Self::eval::<T>,
             NotInitialize,
@@ -96,10 +96,6 @@ impl OpFullyConnected {
             filter.dims[filter.dims.len() - 2] as usize;
         let accum_depth =
             filter.dims[filter.dims.len() - 1] as usize;
-        println!(
-            "{} {} {}",
-            batches, output_depth, accum_depth
-        );
 
         for batch in 0..batches {
             for out_d in 0..output_depth {
@@ -111,37 +107,16 @@ impl OpFullyConnected {
                             * filter.data[out_d
                                 * accum_depth
                                 + acc_d];
-                    println!(
-                        "{} {} {:?}                {:?}",
-                        batch * accum_depth + acc_d,
-                        out_d * accum_depth + acc_d,
-                        input.data
-                            [batch * accum_depth + acc_d],
-                        filter.data
-                            [out_d * accum_depth + acc_d]
-                    );
                 }
-                println!(
-                    " -> {}, total: {:?}",
-                    batch * output_depth + out_d,
-                    total
-                );
                 output.data[batch * output_depth + out_d] =
                     total + bias.data[out_d];
             }
         }
-        println!("=============================================================");
         if let Some(activation) = activation {
-            println!("activaton!!!");
             for i in 0..output.data.len() {
                 output.data[i] = activation(output.data[i]);
             }
         }
-        println!("input->  {}, {:?}", idx_input, input);
-        println!("filter-> {}, {:?}", idx_filter, filter);
-        println!("bias->   {}, {:?}", idx_bias, bias);
-        println!("ouput->  {}, {:?}", idx_output, output);
-        println!("=============================================================");
 
         Ok(())
     }

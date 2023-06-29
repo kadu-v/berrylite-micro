@@ -57,7 +57,7 @@ fn main() {
             )
             .unwrap();
 
-        for e in xsubgraph.node_and_regstrations {
+        for e in xsubgraph.node_and_registrations {
             println!("{:?}", e);
         }
 
@@ -66,7 +66,7 @@ fn main() {
         }
         xsubgraph.invoke();
 
-        for e in xsubgraph.node_and_regstrations {
+        for e in xsubgraph.node_and_registrations {
             println!("{:?}", e);
         }
 

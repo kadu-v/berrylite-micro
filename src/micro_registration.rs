@@ -8,7 +8,7 @@ use crate::micro_node::BLiteNode;
 use crate::micro_tensor::BLiteTensor;
 
 #[derive(Clone, Copy)]
-pub struct BLiteRegstration<T>
+pub struct BLiteRegistration<T>
 where
     T: ArrayElem<T>,
 {
@@ -22,7 +22,7 @@ where
     pub builtin_option: BLiteBuiltinOption<T>,
 }
 
-impl<T: ArrayElem<T>> BLiteRegstration<T> {
+impl<T: ArrayElem<T>> BLiteRegistration<T> {
     pub fn new(
         op_code: i32,
         eval: for<'a> fn(
@@ -61,7 +61,7 @@ impl<T: ArrayElem<T>> BLiteRegstration<T> {
     }
 }
 
-impl<T: ArrayElem<T>> Debug for BLiteRegstration<T> {
+impl<T: ArrayElem<T>> Debug for BLiteRegistration<T> {
     fn fmt(
         &self,
         f: &mut core::fmt::Formatter<'_>,
