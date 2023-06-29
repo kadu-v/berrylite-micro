@@ -2,7 +2,7 @@ use berrylite::kernel::micro_operator::op_fully_connected::OpFullyConnected;
 use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_graph::*;
-use berrylite::micro_op_resolver::BLiteOpResorlver;
+use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
 const BUFFER: &[u8; 3164] =
@@ -38,7 +38,7 @@ fn main() {
             BumpArenaAllocator::new(&mut ARENA);
 
         let mut op_resolver =
-            BLiteOpResorlver::<1, f32>::new();
+            BLiteOpResolver::<1, f32>::new();
         op_resolver
             .add_op(OpFullyConnected::fully_connected());
 

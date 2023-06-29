@@ -6,7 +6,7 @@ use crate::micro_erros::{BLiteError::*, Result};
 use crate::tflite_schema_generated::tflite::BuiltinOperator;
 
 #[derive(Debug, Clone)]
-pub struct BLiteOpResorlver<const N: usize, T>
+pub struct BLiteOpResolver<const N: usize, T>
 where
     T: ArrayElem<T>,
 {
@@ -15,7 +15,7 @@ where
 }
 
 impl<const N: usize, T: ArrayElem<T>>
-    BLiteOpResorlver<N, T>
+    BLiteOpResolver<N, T>
 {
     pub const fn new() -> Self {
         Self {

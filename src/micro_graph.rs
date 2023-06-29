@@ -5,7 +5,7 @@ use crate::micro_array::{ArrayElem, BLiteArray};
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_node::BLiteNode;
-use crate::micro_op_resolver::BLiteOpResorlver;
+use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
@@ -59,7 +59,7 @@ where
 
     pub fn allocate_subgraph<const N: usize>(
         allocator: &mut impl ArenaAllocator,
-        op_resolver: &BLiteOpResorlver<N, T>,
+        op_resolver: &BLiteOpResolver<N, T>,
         subgraph: &TFLiteSubGraph<'a>,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
@@ -133,7 +133,7 @@ where
     unsafe fn allocate_node_and_registrations<
         const N: usize,
     >(
-        op_resolver: &BLiteOpResorlver<N, T>,
+        op_resolver: &BLiteOpResolver<N, T>,
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
@@ -189,7 +189,7 @@ where
     }
 
     unsafe fn alloc_registration<const N: usize>(
-        op_resolver: &BLiteOpResorlver<N, T>,
+        op_resolver: &BLiteOpResolver<N, T>,
         op: &Operator<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
     ) -> Result<BLiteRegistration<T>> {
