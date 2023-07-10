@@ -79,7 +79,7 @@ impl OpFullyConnected {
                 activation,
             } => activation,
             NotInitialize => {
-                return Err(NotInitializeActvation)
+                return Err(NotInitializeActivation)
             }
         };
 

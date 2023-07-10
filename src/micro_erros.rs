@@ -3,7 +3,7 @@ pub type Result<T> = core::result::Result<T, BLiteError>;
 #[derive(Debug)]
 pub enum BLiteError {
     // allocator errors
-    FaildToAllocateMemory,
+    FailedToAllocateMemory,
 
     // micro arrray errors
     NotMatchSize,
@@ -20,5 +20,5 @@ pub enum BLiteError {
     OpIndexOutOfBound,
 
     // micro fully connected
-    NotInitializeActvation,
+    NotInitializeActivation,
 }
