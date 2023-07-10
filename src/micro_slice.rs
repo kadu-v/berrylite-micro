@@ -1,9 +1,9 @@
-// This functuion is used for tflite flatbeffer's vector only
+// This function is used for tflite flatbeffer's vector only
 use flatbuffers::Vector;
 
 use core::mem::size_of;
 
-// because of chainging lifetims 'b to 'a
+// because of changing lifetime 'b to 'a
 pub unsafe fn from_tflite_vector<'b, S, U>(
     vector: &Vector<'b, S>,
 ) -> &'b [U] {
@@ -17,8 +17,8 @@ pub unsafe fn from_tflite_vector<'b, S, U>(
     return data;
 }
 
-// This functuion is used for tflite flatbeffer's vector only
-// because of chainging lifetims 'b to 'a
+// This function is used for tflite flatbeffer's vector only
+// because of changing lifetimes 'b to 'a
 pub unsafe fn from_tflite_vector_mut<'b, S, U>(
     vector: &Vector<'b, S>,
 ) -> &'b mut [U] {

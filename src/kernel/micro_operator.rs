@@ -13,7 +13,7 @@ pub struct BLiteOperator<T>
 where
     T: ArrayElem<T>,
 {
-    regstration: BLiteRegistration<T>,
+    registration: BLiteRegistration<T>,
     parser:
         fn(op: Operator) -> Result<BLiteBuiltinOption<T>>,
 }
@@ -23,11 +23,11 @@ where
     T: ArrayElem<T>,
 {
     pub fn get_op_code(&self) -> i32 {
-        self.regstration.op_code
+        self.registration.op_code
     }
 
     pub fn get_registration(&self) -> BLiteRegistration<T> {
-        self.regstration
+        self.registration
     }
 
     pub fn get_parser(
@@ -46,7 +46,7 @@ impl<T: ArrayElem<T>> Debug for BLiteOperator<T> {
         write!(
             f,
             "Operator {{ registration: {:?}, parse:...}}",
-            self.regstration,
+            self.registration,
         )?;
         Ok(())
     }
