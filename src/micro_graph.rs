@@ -31,6 +31,16 @@ type TFLiteBuffers<'a> =
     Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
 /*-----------------------------------------------------------------------------*/
+/* Struct for a graph                                                          */
+/*-----------------------------------------------------------------------------*/
+#[derive(Debug)]
+pub struct BLiteGraph<'a, T>
+where
+    T: ArrayElem<T> + 'a,
+{
+    subgraphs: BLiteSubgraph<'a, T>,
+}
+/*-----------------------------------------------------------------------------*/
 /* Struct for a subgraph                                                       */
 /*-----------------------------------------------------------------------------*/
 #[derive(Debug)]
@@ -112,9 +122,9 @@ where
             }
         };
 
-        if let Some(subgprah_tensors) = subgraph.tensors() {
+        if let Some(subgraph_tensors) = subgraph.tensors() {
             for (i, tensor) in
-                subgprah_tensors.iter().enumerate()
+                subgraph_tensors.iter().enumerate()
             {
                 let tensor_idx = tensor.buffer();
                 let buffer =
