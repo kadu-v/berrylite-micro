@@ -1,4 +1,4 @@
-use berrylite::kernel::micro_operator::op_fully_connected::OpFullyConnected;
+use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
 use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_graph::*;

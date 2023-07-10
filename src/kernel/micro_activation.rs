@@ -1,7 +1,6 @@
-pub mod activation_relu;
-
+pub mod relu;
 use crate::micro_array::ArrayElem;
-use activation_relu::relu;
+use relu::relu;
 
 pub fn get_activation<T: ArrayElem<T>>(
     op_code: i32,

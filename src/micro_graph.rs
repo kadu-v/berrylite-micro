@@ -19,7 +19,8 @@ use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
-
+/*-----------------------------------------------------------------------------*/
+/* Type synonyms for TFLiteGraph                                               */
 /*-----------------------------------------------------------------------------*/
 type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
 type TFLiteOperators<'a> =
@@ -29,6 +30,8 @@ type TFLiteOperatorCodes<'a> =
 type TFLiteBuffers<'a> =
     Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
+/*-----------------------------------------------------------------------------*/
+/* Struct for a subgraph                                                       */
 /*-----------------------------------------------------------------------------*/
 #[derive(Debug)]
 pub struct BLiteSubgraph<'a, T>

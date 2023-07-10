@@ -1,4 +1,4 @@
-pub mod op_fully_connected;
+pub mod fully_connected;
 
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;
