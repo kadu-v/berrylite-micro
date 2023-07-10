@@ -1,4 +1,4 @@
-use crate::kernel::micro_activation::activation_relu::relu;
+use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption, BLiteBuiltinOption::*,
 };
@@ -23,7 +23,7 @@ impl OpFullyConnected {
     pub fn fully_connected<T: ArrayElem<T>>(
     ) -> BLiteOperator<T> {
         BLiteOperator {
-            regstration: OpFullyConnected::regstration(),
+            registration: OpFullyConnected::registration(),
             parser: Self::parser,
         }
     }
@@ -39,21 +39,14 @@ impl OpFullyConnected {
                 .fused_activation_function()
                 .0 as i32;
         }
-        println!("activation opcode: {}", op_code);
-        if op_code == 1 {
-            Ok(BLiteBuiltinOption::FullyConnectedOptions {
-                op_code: op_code,
-                activation: Some(relu),
-            })
-        } else {
-            Ok(BLiteBuiltinOption::FullyConnectedOptions {
-                op_code: op_code,
-                activation: None,
-            })
-        }
+        let activation = get_activation::<T>(op_code);
+        Ok(BLiteBuiltinOption::FullyConnectedOptions {
+            op_code,
+            activation,
+        })
     }
 
-    pub fn regstration<T: ArrayElem<T>>(
+    pub fn registration<T: ArrayElem<T>>(
     ) -> BLiteRegistration<T> {
         BLiteRegistration::new(
             Self::OPCODE,
