@@ -1,6 +1,7 @@
 use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
 use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
+use berrylite::micro_erros::Result;
 use berrylite::micro_graph::*;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
@@ -16,49 +17,39 @@ const BUFFER: &[u8; 3164] =
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
-fn main() {
+fn predict() -> Result<()> {
     let model = tflite::root_as_model(BUFFER).unwrap();
     println!("model version: {}", model.version());
-    let subgraphs = model.subgraphs().unwrap();
-    let subgraph = subgraphs.get(0);
-    let buffers = model.buffers().unwrap();
 
-    let operators = subgraph.operators().unwrap();
-    for op in operators {
-        let options = op.builtin_options_type();
-        let option = op
-            .builtin_options_as_fully_connected_options()
-            .unwrap();
-        // let x = option.fused_activation_function();
-        println!("{:?}", op);
+    let mut allocator =
+        unsafe { BumpArenaAllocator::new(&mut ARENA) };
+
+    let mut op_resolver = BLiteOpResolver::<1, f32>::new();
+    op_resolver
+        .add_op(OpFullyConnected::fully_connected())?;
+
+    let graph = BLiteGraph::allocate_graph(
+        &mut allocator,
+        &op_resolver,
+        &model,
+    )?;
+
+    graph.invoke()?;
+
+    for (i, tensor) in graph.subgraphs[0]
+        .borrow()
+        .tensors
+        .iter()
+        .enumerate()
+    {
+        println!("{} -> {:?}", i, tensor);
     }
+    Ok(())
+}
 
-    unsafe {
-        let mut allocator =
-            BumpArenaAllocator::new(&mut ARENA);
-
-        let mut op_resolver =
-            BLiteOpResolver::<1, f32>::new();
-        op_resolver
-            .add_op(OpFullyConnected::fully_connected());
-
-        let operators = subgraph.operators().unwrap();
-        let graph = BLiteGraph::allocate_graph(
-            &mut allocator,
-            &op_resolver,
-            &model,
-        )
-        .unwrap();
-
-        graph.invoke();
-
-        for (i, tensor) in graph.subgraphs[0]
-            .borrow()
-            .tensors
-            .iter()
-            .enumerate()
-        {
-            println!("{} -> {:?}", i, tensor);
-        }
+fn main() {
+    if let Err(e) = predict() {
+        println!("Error: {:?}", e);
     }
+    println!("Inference Success!!");
 }
