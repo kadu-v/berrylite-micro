@@ -2,6 +2,15 @@
 name = "berrylite"
 version = "0.1.0"
 edition = "2021"
+authors = ["kazuki ikemori (kadu-v)"]
+license = "MIT OR Apache-2.0"
+descritpion = """
+Runtime for Tensorflow Lite Microcontroller written in Rust
+"""
+readme = "README.md"
+documentation = "..."
+repository = "https://github.com/nefrock/embeddedsw-rs"
+kyewords = ["Tensorflow Lite", "no_std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

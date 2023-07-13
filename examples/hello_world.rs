@@ -60,34 +60,5 @@ fn main() {
         {
             println!("{} -> {:?}", i, tensor);
         }
-        // let operator_codes =
-        //     model.operator_codes().unwrap();
-        // let mut xsubgraph =
-        //     BLiteSubgraph::<f32>::allocate_subgraph(
-        //         &mut allocator,
-        //         &op_resolver,
-        //         &subgraph,
-        //         &operators,
-        //         &operator_codes,
-        //         &buffers,
-        //     )
-        //     .unwrap();
-
-        // for e in xsubgraph.node_and_registrations {
-        //     println!("{:?}", e);
-        // }
-
-        // for (i, e) in xsubgraph.tensors.iter().enumerate() {
-        //     println!("{} -> {:?}", i, e);
-        // }
-        // xsubgraph.invoke();
-
-        // for e in xsubgraph.node_and_registrations {
-        //     println!("{:?}", e);
-        // }
-
-        // for (i, e) in xsubgraph.tensors.iter().enumerate() {
-        //     println!("{} -> {:?}", i, e);
-        // }
     }
 }
