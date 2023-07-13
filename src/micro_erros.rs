@@ -14,6 +14,10 @@ pub enum BLiteError {
     NotFoundBufferData,
     MissingRegistration,
     NotFoundRegistration,
+    NotFoundSubgraphs,
+    NotFoundBuffers,
+    NotFoundOperators,
+    NotFoundOperatorCodes,
 
     // micro operator resolver
     NotFoundOperator,

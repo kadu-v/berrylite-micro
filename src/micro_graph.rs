@@ -10,7 +10,7 @@ use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::{
-    self, Buffer, Operator, OperatorCode,
+    self, Buffer, Model, Operator, OperatorCode,
 };
 
 use core::cell::RefCell;
@@ -38,8 +38,77 @@ pub struct BLiteGraph<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
-    subgraphs: BLiteSubgraph<'a, T>,
+    pub subgraphs: &'a [RefCell<BLiteSubgraph<'a, T>>],
 }
+
+impl<'a, T> BLiteGraph<'a, T>
+where
+    T: ArrayElem<T> + 'a,
+{
+    pub fn allocate_graph<const N: usize>(
+        allocator: &mut impl ArenaAllocator,
+        op_resolver: &BLiteOpResolver<N, T>,
+        model: &Model<'a>,
+    ) -> Result<Self> {
+        let Some(subgraphs) = model.subgraphs() else {
+            return Err(NotFoundSubgraphs)
+        };
+
+        let Some(buffers) = model.buffers() else {
+            return Err(NotFoundBuffers)
+        };
+
+        let Some(operator_codes) = model.operator_codes() else {
+            return Err(NotFoundOperatorCodes);
+        };
+
+        assert_eq!(subgraphs.len(), 1, "expected the length of subgraphs is 1, but got {}", subgraphs.len());
+        let blite_subgraphs = unsafe {
+            let row_ptr = allocator.alloc(
+                subgraphs.len()
+                    * size_of::<
+                        RefCell<BLiteSubgraph<'a, T>>,
+                    >(),
+                align_of::<RefCell<BLiteSubgraph<'a, T>>>(),
+            )?;
+
+            from_raw_parts_mut(
+                row_ptr
+                    as *mut RefCell<BLiteSubgraph<'a, T>>,
+                subgraphs.len(),
+            )
+        };
+        for (i, subgraph) in subgraphs.iter().enumerate() {
+            let Some(operators) = subgraph.operators() else {
+                return Err(NotFoundOperators)
+            };
+
+            let blite_subgraph =
+                BLiteSubgraph::allocate_subgraph(
+                    allocator,
+                    &op_resolver,
+                    &subgraph,
+                    &operators,
+                    &operator_codes,
+                    &buffers,
+                )?;
+            blite_subgraphs[i] =
+                RefCell::new(blite_subgraph);
+        }
+        Ok(Self {
+            subgraphs: blite_subgraphs,
+        })
+    }
+
+    pub fn invoke(&self) -> Result<()> {
+        for subgraph in self.subgraphs {
+            subgraph.borrow_mut().invoke()?;
+        }
+
+        Ok(())
+    }
+}
+
 /*-----------------------------------------------------------------------------*/
 /* Struct for a subgraph                                                       */
 /*-----------------------------------------------------------------------------*/

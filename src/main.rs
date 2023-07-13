@@ -43,35 +43,51 @@ fn main() {
             .add_op(OpFullyConnected::fully_connected());
 
         let operators = subgraph.operators().unwrap();
+        let graph = BLiteGraph::allocate_graph(
+            &mut allocator,
+            &op_resolver,
+            &model,
+        )
+        .unwrap();
 
-        let operator_codes =
-            model.operator_codes().unwrap();
-        let mut xsubgraph =
-            BLiteSubgraph::<f32>::allocate_subgraph(
-                &mut allocator,
-                &op_resolver,
-                &subgraph,
-                &operators,
-                &operator_codes,
-                &buffers,
-            )
-            .unwrap();
+        graph.invoke();
 
-        for e in xsubgraph.node_and_registrations {
-            println!("{:?}", e);
+        for (i, tensor) in graph.subgraphs[0]
+            .borrow()
+            .tensors
+            .iter()
+            .enumerate()
+        {
+            println!("{} -> {:?}", i, tensor);
         }
+        // let operator_codes =
+        //     model.operator_codes().unwrap();
+        // let mut xsubgraph =
+        //     BLiteSubgraph::<f32>::allocate_subgraph(
+        //         &mut allocator,
+        //         &op_resolver,
+        //         &subgraph,
+        //         &operators,
+        //         &operator_codes,
+        //         &buffers,
+        //     )
+        //     .unwrap();
 
-        for (i, e) in xsubgraph.tensors.iter().enumerate() {
-            println!("{} -> {:?}", i, e);
-        }
-        xsubgraph.invoke();
+        // for e in xsubgraph.node_and_registrations {
+        //     println!("{:?}", e);
+        // }
 
-        for e in xsubgraph.node_and_registrations {
-            println!("{:?}", e);
-        }
+        // for (i, e) in xsubgraph.tensors.iter().enumerate() {
+        //     println!("{} -> {:?}", i, e);
+        // }
+        // xsubgraph.invoke();
 
-        for (i, e) in xsubgraph.tensors.iter().enumerate() {
-            println!("{} -> {:?}", i, e);
-        }
+        // for e in xsubgraph.node_and_registrations {
+        //     println!("{:?}", e);
+        // }
+
+        // for (i, e) in xsubgraph.tensors.iter().enumerate() {
+        //     println!("{} -> {:?}", i, e);
+        // }
     }
 }
