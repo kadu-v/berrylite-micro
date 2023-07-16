@@ -13,6 +13,13 @@ const BUFFER: &[u8; 3164] =
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
+fn set_input(
+    interpreter: &mut BLiteInterpreter<'_, f32>,
+    input: f32,
+) {
+    interpreter.input.data[0] = input;
+}
+
 fn predict(input: f32) -> Result<f32> {
     let model = tflite::root_as_model(BUFFER).unwrap();
 
@@ -23,15 +30,15 @@ fn predict(input: f32) -> Result<f32> {
     op_resolver
         .add_op(OpFullyConnected::fully_connected())?;
 
-    let interpreter = BLiteInterpreter::new(
+    let mut interpreter = BLiteInterpreter::new(
         &mut allocator,
         &op_resolver,
         &model,
     )?;
 
-    interpreter.input.data[0] = input;
-
+    set_input(&mut interpreter, input);
     interpreter.invoke()?;
+
     let output = interpreter.output;
 
     Ok(output.data[0])
