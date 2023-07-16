@@ -1,8 +1,11 @@
+use core::f32::consts::PI;
+
 use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
 use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::Result;
 use berrylite::micro_graph::*;
+use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
@@ -17,9 +20,8 @@ const BUFFER: &[u8; 3164] =
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
-fn predict() -> Result<()> {
+fn predict(input: f32) -> Result<f32> {
     let model = tflite::root_as_model(BUFFER).unwrap();
-    println!("model version: {}", model.version());
 
     let mut allocator =
         unsafe { BumpArenaAllocator::new(&mut ARENA) };
@@ -28,28 +30,39 @@ fn predict() -> Result<()> {
     op_resolver
         .add_op(OpFullyConnected::fully_connected())?;
 
-    let graph = BLiteGraph::allocate_graph(
+    let interpreter = BLiteInterpreter::new(
         &mut allocator,
         &op_resolver,
         &model,
     )?;
 
-    graph.invoke()?;
+    interpreter.input.data[0] = input;
 
-    for (i, tensor) in graph.subgraphs[0]
-        .borrow()
-        .tensors
-        .iter()
-        .enumerate()
-    {
-        println!("{} -> {:?}", i, tensor);
-    }
-    Ok(())
+    interpreter.invoke()?;
+    let output = interpreter.output;
+
+    Ok(output.data[0])
 }
 
 fn main() {
-    if let Err(e) = predict() {
-        println!("Error: {:?}", e);
+    let delta = 0.05;
+    let inputs =
+        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    for input in inputs {
+        let input = input * PI;
+        let Ok(y_pred) = predict(input) else {
+            println!("Error!");
+            return
+        };
+        let ground_truth = input.sin();
+        println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth: {ground_truth:.8}");
+        if (y_pred - ground_truth).abs() > delta {
+            println!(
+                "Error!: abs :{}",
+                (y_pred - ground_truth).abs()
+            );
+            return;
+        }
     }
     println!("Inference Success!!");
 }
