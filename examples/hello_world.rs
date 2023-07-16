@@ -1,11 +1,10 @@
-use core::f32::consts::PI;
-
 use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
+use core::f32::consts::PI;
 
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
@@ -52,7 +51,7 @@ fn main() {
         let input = input * PI;
         let Ok(y_pred) = predict(input) else {
             println!("Error!");
-            return
+            return;
         };
         let ground_truth = input.sin();
         println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth: {ground_truth:.8}");
