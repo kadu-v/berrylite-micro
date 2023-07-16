@@ -1,9 +1,7 @@
-use std::cell::{Ref, RefCell};
-
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
-use crate::micro_erros::{BLiteError::*, Result};
-use crate::micro_graph::{BLiteGraph, BLiteSubgraph};
+use crate::micro_erros::Result;
+use crate::micro_graph::BLiteGraph;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::tflite_schema_generated::tflite::Model;
 
@@ -14,7 +12,6 @@ where
 {
     pub input: &'a mut BLiteArray<'a, T>,
     pub output: &'a BLiteArray<'a, T>,
-    model: &'a Model<'a>,
     graph: BLiteGraph<'a, T>,
 }
 
@@ -68,7 +65,6 @@ where
             input,
             output,
             graph,
-            model,
         })
     }
 
