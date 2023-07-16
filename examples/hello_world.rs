@@ -1,21 +1,14 @@
 use core::f32::consts::PI;
 
 use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
-use berrylite::kernel::micro_operator::BLiteOperator;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::Result;
-use berrylite::micro_graph::*;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
-// const BUFFER: &[u8; 300568] =
-//     include_bytes!("../models/person_detect.tflite");
-
-// const BUFFER: &[u8; 41240] =
-//     include_bytes!("../models/trained_lstm.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
