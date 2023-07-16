@@ -1,4 +1,7 @@
+pub mod conv2d;
 pub mod fully_connected;
+pub mod max_pool2d;
+pub mod reshape;
 
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;

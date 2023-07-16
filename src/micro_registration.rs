@@ -40,15 +40,6 @@ impl<T: ArrayElem<T>> BLiteRegistration<T> {
         }
     }
 
-    pub fn eval<'a>(
-        context: &BLiteContext<'a, T>,
-        tensors: &'a mut [BLiteTensor<'a, T>],
-        node: &BLiteNode<'a>,
-        builtin_option: BLiteBuiltinOption<T>,
-    ) -> Result<()> {
-        Ok(())
-    }
-
     pub fn call_eval<'a>(
         &self,
         tensors: &'a mut [BLiteTensor<'a, T>],

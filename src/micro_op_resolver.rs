@@ -35,7 +35,7 @@ impl<const N: usize, T: ArrayElem<T>>
                 }
             }
         }
-        Err(NotFoundOperator)
+        Err(NotFoundOperator(op.0))
     }
 
     pub fn add_op(

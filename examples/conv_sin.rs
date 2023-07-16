@@ -1,4 +1,7 @@
-use berrylite::kernel::micro_operator::fully_connected::OpFullyConnected;
+use berrylite::kernel::micro_operator::{
+    conv2d::Conv2D, fully_connected::OpFullyConnected,
+    max_pool2d::MaxPool2D, reshape::Reshape,
+};
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
@@ -6,10 +9,10 @@ use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
-const BUFFER: &[u8; 3164] =
-    include_bytes!("../models/hello_world_float.tflite");
+const BUFFER: &[u8; 25068] =
+    include_bytes!("../models/conv_sin.tflite");
 
-const ARENA_SIZE: usize = 1 * 1024;
+const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
@@ -25,9 +28,12 @@ fn predict(input: f32) -> Result<f32> {
     let mut allocator =
         unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<1, f32>::new();
+    let mut op_resolver = BLiteOpResolver::<4, f32>::new();
     op_resolver
         .add_op(OpFullyConnected::fully_connected())?;
+    op_resolver.add_op(Reshape::reshape())?;
+    op_resolver.add_op(Conv2D::conv2d())?;
+    op_resolver.add_op(MaxPool2D::max_pool2d())?;
 
     let mut interpreter = BLiteInterpreter::new(
         &mut allocator,

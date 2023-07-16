@@ -5,7 +5,7 @@ pub enum BLiteError {
     // allocator errors
     FailedToAllocateMemory,
 
-    // micro arrray errors
+    // micro array errors
     NotMatchSize,
 
     // micro graph errors
@@ -20,9 +20,11 @@ pub enum BLiteError {
     NotFoundOperatorCodes,
 
     // micro operator resolver
-    NotFoundOperator,
+    NotFoundOperator(i32),
     OpIndexOutOfBound,
 
     // micro fully connected
     NotInitializeActivation,
+    NotCompatibleOption,
+    NotFoundOption,
 }

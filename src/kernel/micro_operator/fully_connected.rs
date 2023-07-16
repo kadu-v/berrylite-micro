@@ -23,7 +23,7 @@ impl OpFullyConnected {
     pub fn fully_connected<T: ArrayElem<T>>(
     ) -> BLiteOperator<T> {
         BLiteOperator {
-            registration: OpFullyConnected::registration(),
+            registration: Self::registration(),
             parser: Self::parser,
         }
     }
@@ -81,6 +81,7 @@ impl OpFullyConnected {
             NotInitialize => {
                 return Err(NotInitializeActivation)
             }
+            _ => return Err(NotCompatibleOption),
         };
 
         // TODO:
