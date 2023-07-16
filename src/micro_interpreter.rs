@@ -87,6 +87,7 @@ where
             .unwrap()
             .len()
     }
+
     pub fn invoke(&self) -> Result<()> {
         self.graph.invoke()
     }
