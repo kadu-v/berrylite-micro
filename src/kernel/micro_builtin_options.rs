@@ -1,8 +1,6 @@
 use std::fmt::Debug;
 
-use crate::{
-    micro_allocator::ArenaAllocator, micro_array::ArrayElem,
-};
+use crate::micro_array::ArrayElem;
 
 #[derive(Debug, Clone, Copy)]
 pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
@@ -37,5 +35,8 @@ pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
         filter_h: i32,
     },
     ReshapeOptions {},
+    SoftMaxOptions {
+        beta: f32,
+    },
     NotInitialize,
 }

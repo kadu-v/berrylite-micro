@@ -3,6 +3,7 @@ pub mod fully_connected;
 pub mod max_pool2d;
 pub mod padding;
 pub mod reshape;
+pub mod softmax;
 
 use crate::builtin_op_data::BLiteOpParams;
 use crate::micro_array::ArrayElem;

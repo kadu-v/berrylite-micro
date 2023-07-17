@@ -10,6 +10,7 @@ use core::fmt::Debug;
 use core::mem::{align_of, size_of};
 use core::ops::{Add, Mul};
 use core::slice::from_raw_parts_mut;
+use std::ops::{Div, Sub};
 
 /*-----------------------------------------------------------------------------*/
 pub trait ArrayElem<T> = Debug
@@ -17,8 +18,12 @@ pub trait ArrayElem<T> = Debug
     + Copy
     + Add<Output = T>
     + Mul<Output = T>
+    + Sub<Output = T>
+    + Div<Output = T>
     + PartialEq
     + PartialOrd
+    + From<f32>
+    + Into<f32>
     + Default;
 
 #[derive(Debug)]
