@@ -30,6 +30,7 @@ impl OpFullyConnected {
 
     pub fn parser<T: ArrayElem<T>>(
         op: Operator,
+        tensors: &mut [BLiteTensor<'_, T>],
     ) -> Result<BLiteBuiltinOption<T>> {
         let builtin_option =
             op.builtin_options_as_fully_connected_options();

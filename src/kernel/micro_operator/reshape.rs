@@ -27,6 +27,7 @@ impl Reshape {
 
     pub fn parser<T: ArrayElem<T>>(
         op: Operator,
+        tensors: &mut [BLiteTensor<'_, T>],
     ) -> Result<BLiteBuiltinOption<T>> {
         Ok(BLiteBuiltinOption::ReshapeOptions {})
     }

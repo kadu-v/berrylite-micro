@@ -25,6 +25,16 @@ fn set_input(
 fn predict(input: f32) -> Result<f32> {
     let model = tflite::root_as_model(BUFFER).unwrap();
 
+    let tensor = model
+        .subgraphs()
+        .unwrap()
+        .get(0)
+        .operators()
+        .unwrap();
+    for op in tensor {
+        println!("{:?}", op);
+    }
+
     let mut allocator =
         unsafe { BumpArenaAllocator::new(&mut ARENA) };
 

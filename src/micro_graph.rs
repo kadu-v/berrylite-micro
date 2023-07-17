@@ -1,5 +1,6 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
+use crate::builtin_op_data::BLiteOpParams;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
 use crate::micro_context::BLiteContext;
@@ -157,6 +158,7 @@ where
                 allocator,
                 operators,
                 operator_codes,
+                tensors,
             )?
         };
 
@@ -219,6 +221,7 @@ where
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<&'a [(BLiteNode<'a>, BLiteRegistration<T>)]>
     {
         let node_and_registrations_row_ptr = allocator
@@ -250,6 +253,7 @@ where
                 op_resolver,
                 &op,
                 operator_codes,
+                tensors,
             )?;
             node_and_registrations[i] =
                 (node, registration);
@@ -274,6 +278,7 @@ where
         op_resolver: &BLiteOpResolver<N, T>,
         op: &Operator<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<BLiteRegistration<T>> {
         let idx = op.opcode_index();
         if idx as usize >= operator_codes.len() {
@@ -286,7 +291,7 @@ where
             op_resolver.find_op(&builtin_code)?;
         let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
-        let builtin_option = parser(*op).unwrap();
+        let builtin_option = parser(*op, tensors).unwrap();
 
         registration.builtin_option = builtin_option;
 

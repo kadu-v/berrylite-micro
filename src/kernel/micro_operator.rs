@@ -3,9 +3,11 @@ pub mod fully_connected;
 pub mod max_pool2d;
 pub mod reshape;
 
+use crate::builtin_op_data::BLiteOpParams;
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;
 use crate::micro_registration::BLiteRegistration;
+use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
 
@@ -17,8 +19,10 @@ where
     T: ArrayElem<T>,
 {
     registration: BLiteRegistration<T>,
-    parser:
-        fn(op: Operator) -> Result<BLiteBuiltinOption<T>>,
+    parser: fn(
+        op: Operator,
+        tensors: &mut [BLiteTensor<'_, T>],
+    ) -> Result<BLiteBuiltinOption<T>>,
 }
 
 impl<T> BLiteOperator<T>
@@ -35,8 +39,10 @@ where
 
     pub fn get_parser(
         &self,
-    ) -> fn(op: Operator) -> Result<BLiteBuiltinOption<T>>
-    {
+    ) -> fn(
+        op: Operator,
+        tensors: &mut [BLiteTensor<'_, T>],
+    ) -> Result<BLiteBuiltinOption<T>> {
         self.parser
     }
 }

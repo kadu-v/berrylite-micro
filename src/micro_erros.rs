@@ -23,8 +23,10 @@ pub enum BLiteError {
     NotFoundOperator(i32),
     OpIndexOutOfBound,
 
+    // micro builtint options
+    NotCompatibleOption,
+
     // micro fully connected
     NotInitializeActivation,
-    NotCompatibleOption,
     NotFoundOption,
 }
