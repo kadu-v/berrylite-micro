@@ -39,7 +39,6 @@ impl MaxPool2D {
     ) -> Result<BLiteBuiltinOption<T>> {
         let builtin_option =
             op.builtin_options_as_pool_2_doptions();
-        dbg!(builtin_option);
         let mut op_code = -1;
         let Some(builtin_option) = builtin_option else {
             return Err(NotFoundOption);
