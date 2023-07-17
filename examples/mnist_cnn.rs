@@ -61,6 +61,7 @@ fn predict() -> Result<usize> {
             num = i;
         }
     }
+    dbg!(&output.data);
     Ok(num)
 }
 
