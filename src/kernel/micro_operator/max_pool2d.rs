@@ -11,11 +11,8 @@ use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
-use crate::tflite_schema_generated::tflite::{
-    BuiltinOptions, Operator,
-};
+use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
-use std::io::WriterPanicked;
 
 use crate::kernel::micro_operator::BLiteOperator;
 
@@ -125,17 +122,17 @@ impl MaxPool2D {
 
         let batchs = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
         let MaxPool2DOptions { 
-            op_code,
+            op_code:_,
             activation,
-            padding,
+            padding:_,
             stride_w,
             stride_h,
             filter_w, 
             filter_h,
             padding_w,
             padding_h,
-            padding_w_offset,
-            padding_h_offset, 
+            padding_w_offset:_,
+            padding_h_offset:_, 
         } = builtin_option else {
             return Err(NotCompatibleOption)
         };

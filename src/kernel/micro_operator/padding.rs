@@ -8,8 +8,8 @@ pub(super) fn compute_padding_height_width(
     input_w: i32,
     filter_h: i32,
     filter_w: i32,
-    output_h: i32,
-    output_w: i32,
+    _output_h: i32,
+    _output_w: i32,
 ) -> (i32, i32, i32, i32) {
     let out_height = compute_out_size(
         padding,

@@ -5,7 +5,6 @@ pub mod padding;
 pub mod reshape;
 pub mod softmax;
 
-use crate::builtin_op_data::BLiteOpParams;
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;
 use crate::micro_registration::BLiteRegistration;

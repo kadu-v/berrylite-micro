@@ -54,9 +54,9 @@ impl ArenaAllocator for BumpArenaAllocator {
 
     unsafe fn dealloc(
         &mut self,
-        ptr: *mut u8,
-        size: usize,
-        align: usize,
+        _ptr: *mut u8,
+        _size: usize,
+        _align: usize,
     ) {
         todo!()
     }

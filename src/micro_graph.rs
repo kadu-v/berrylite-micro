@@ -1,6 +1,5 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use crate::builtin_op_data::BLiteOpParams;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
 use crate::micro_context::BLiteContext;
@@ -304,7 +303,7 @@ where
 
         let ctx = BLiteContext::new();
 
-        for (i, (node, registration)) in
+        for (_, (node, registration)) in
             node_and_registrations.iter().enumerate()
         {
             let tensors = unsafe {

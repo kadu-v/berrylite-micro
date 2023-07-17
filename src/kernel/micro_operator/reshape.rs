@@ -27,8 +27,8 @@ impl Reshape {
     }
 
     pub fn parser<T: ArrayElem<T>>(
-        op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
+        _op: Operator,
+        _tensors: &mut [BLiteTensor<'_, T>],
     ) -> Result<BLiteBuiltinOption<T>> {
         Ok(BLiteBuiltinOption::ReshapeOptions {})
     }
@@ -46,7 +46,7 @@ impl Reshape {
         _context: &BLiteContext<'a, T>,
         tensors: &'a mut [BLiteTensor<'a, T>],
         node: &BLiteNode<'a>,
-        builtin_option: BLiteBuiltinOption<T>,
+        _builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
         let input = tensors[idx_input].borrow();

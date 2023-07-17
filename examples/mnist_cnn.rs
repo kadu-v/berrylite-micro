@@ -8,7 +8,6 @@ use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
-use core::f32::consts::PI;
 
 const BUFFER: &[u8; 377200] =
     include_bytes!("../models/mnist_cnn.tflite");
