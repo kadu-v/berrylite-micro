@@ -35,11 +35,10 @@ impl Conv2D {
     ) -> Result<BLiteBuiltinOption<T>> {
         let builtin_option =
             op.builtin_options_as_conv_2_doptions();
-        let mut op_code = -1;
         let Some(builtin_option) = builtin_option else {
             return Err(NotFoundOption);
         };
-        op_code = builtin_option
+        let op_code = builtin_option
             .fused_activation_function()
             .0 as i32;
         let padding = builtin_option.padding().0 as usize;
