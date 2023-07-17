@@ -17,9 +17,15 @@ static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
     interpreter: &mut BLiteInterpreter<'_, f32>,
+    input_h: usize,
+    input_w: usize,
     input: f32,
 ) {
-    interpreter.input.data[0] = input;
+    for h in 0..input_h {
+        for w in 0..input_w {
+            interpreter.input.data[h * input_w + w] = input;
+        }
+    }
 }
 
 fn predict(input: f32) -> Result<f32> {
@@ -31,9 +37,15 @@ fn predict(input: f32) -> Result<f32> {
         .get(0)
         .operators()
         .unwrap();
-    for op in tensor {
-        println!("{:?}", op);
-    }
+    // for op in model
+    //     .subgraphs()
+    //     .unwrap()
+    //     .get(0)
+    //     .operators()
+    //     .unwrap()
+    // {
+    //     println!("{:?}", op);
+    // }
 
     let mut allocator =
         unsafe { BumpArenaAllocator::new(&mut ARENA) };
@@ -51,18 +63,18 @@ fn predict(input: f32) -> Result<f32> {
         &model,
     )?;
 
-    set_input(&mut interpreter, input);
+    set_input(&mut interpreter, 28, 28, input);
     interpreter.invoke()?;
 
     let output = interpreter.output;
-
     Ok(output.data[0])
 }
 
 fn main() {
     let delta = 0.05;
-    let inputs =
-        [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    // let inputs =
+    //     [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    let inputs = [1.0];
     for input in inputs {
         let input = input * PI;
         let y_pred = match predict(input) {

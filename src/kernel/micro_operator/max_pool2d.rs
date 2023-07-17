@@ -190,6 +190,7 @@ impl MaxPool2D {
                 }
             }
         }
+
         Ok(())
     }
 

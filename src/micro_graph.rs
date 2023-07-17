@@ -304,8 +304,8 @@ where
 
         let ctx = BLiteContext::new();
 
-        for (node, registration) in
-            node_and_registrations.iter()
+        for (i, (node, registration)) in
+            node_and_registrations.iter().enumerate()
         {
             let tensors = unsafe {
                 &mut *(self.tensors

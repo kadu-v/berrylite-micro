@@ -25,21 +25,22 @@ pub(super) fn compute_padding_height_width(
         stride_w,
         dilation_w_factor,
     );
-    let (height, offset_h) = compute_padding_with_offset(
-        stride_h,
-        dilation_h_factor,
-        input_h,
-        filter_h,
-        out_height,
-    );
-    let (width, offset_w) = compute_padding_with_offset(
+    let (pad_height, offset_h) =
+        compute_padding_with_offset(
+            stride_h,
+            dilation_h_factor,
+            input_h,
+            filter_h,
+            out_height,
+        );
+    let (pad_width, offset_w) = compute_padding_with_offset(
         stride_w,
         dilation_w_factor,
         input_w,
         filter_w,
         out_width,
     );
-    (height, offset_h, width, offset_w)
+    (pad_height, offset_h, pad_width, offset_w)
 }
 
 pub(super) fn compute_out_size(
@@ -76,9 +77,9 @@ pub(super) fn compute_padding_with_offset(
 ) -> (i32, i32) {
     let effective_filter_size =
         (filter_size - 1) * dilation_rate + 1;
-    let mut total_padding =
-        (out_size - 1) * stride * effective_filter_size
-            - input_size;
+    let mut total_padding = (out_size - 1) * stride
+        + effective_filter_size
+        - input_size;
     total_padding =
         if total_padding > 0 { total_padding } else { 0 };
     let offset = total_padding % 2;
