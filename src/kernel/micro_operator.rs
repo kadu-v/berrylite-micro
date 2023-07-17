@@ -1,6 +1,7 @@
 pub mod conv2d;
 pub mod fully_connected;
 pub mod max_pool2d;
+pub mod padding;
 pub mod reshape;
 
 use crate::builtin_op_data::BLiteOpParams;
