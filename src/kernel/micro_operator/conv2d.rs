@@ -15,7 +15,6 @@ use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
 
 use crate::kernel::micro_operator::BLiteOperator;
-use std::collections::{hash_map, HashSet};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Conv2D {}
@@ -153,22 +152,9 @@ impl Conv2D {
             padding_w_offset:_,
             padding_h_offset:_ ,
         } = builtin_option else {
-            return Err(NotCompatibleOption)
+            return Err(NotCompatibleOption);
         };
-        dbg!(
-            groups,
-            filter_input_depth,
-            stride_w,
-            stride_h,
-            dilation_w_factor,
-            dilation_h_factor,
-            padding_w,
-            padding_h,
-            filter_input_depth,
-            input_depth,
-            output_depth
-        );
-        let mut set = HashSet::new();
+
         for batch in 0..batchs {
             for out_y in 0..output_height {
                 let in_y_origin =
@@ -231,10 +217,7 @@ impl Conv2D {
                             out_x,
                             out_channel,
                         );
-                        if output_v_idx == 1 {
-                            dbg!(total, bias_v);
-                        }
-                        set.insert(output_v_idx);
+
                         if let Some(activation) = activation
                         {
                             output.data
@@ -249,15 +232,6 @@ impl Conv2D {
                 }
             }
         }
-        // println!("input: {:?}", input.data);
-        for i in 0..32 {
-            println!(
-                "output: {:?} {:?}",
-                output.data[i], output.dims
-            );
-        }
-        // println!("bias: {:?}", bias);
-        println!("{:?}", set.len());
 
         Ok(())
     }
