@@ -1,4 +1,5 @@
 use flatbuffers::Vector;
+use num_traits::{AsPrimitive, FromPrimitive, NumCast};
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::{BLiteError::*, Result};
@@ -15,22 +16,38 @@ use core::ops::{
 use core::slice::from_raw_parts_mut;
 
 /*-----------------------------------------------------------------------------*/
-pub trait ArrayElem<T> = Debug
-    + Clone
-    + Copy
-    + Add<Output = T>
-    + Mul<Output = T>
-    + Sub<Output = T>
-    + Div<Output = T>
-    + AddAssign
-    + SubAssign
-    + MulAssign
-    + DivAssign
-    + PartialEq
-    + PartialOrd
-    + From<f32>
-    + Into<f32>
-    + Default;
+
+#[derive(Debug, Clone, Copy)]
+pub struct BLiteQuantizationParams {
+    pub scale: f32,
+    pub zero_point: i32,
+}
+
+impl BLiteQuantizationParams {
+    pub const fn new(scale: f32, zero_point: i32) -> Self {
+        Self { scale, zero_point }
+    }
+}
+
+/*-----------------------------------------------------------------------------*/
+pub trait ArrayElem<T: 'static + Clone + Copy> =
+    Debug
+        + Clone
+        + Copy
+        + Add<Output = T>
+        + Mul<Output = T>
+        + Sub<Output = T>
+        + Div<Output = T>
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + PartialEq
+        + PartialOrd
+        + AsPrimitive<f32>
+        + AsPrimitive<i8>
+        + FromPrimitive
+        + Default;
 
 #[derive(Debug)]
 pub struct BLiteArray<'a, T>
@@ -39,6 +56,7 @@ where
 {
     pub data: &'a mut [T],
     pub dims: &'a [i32],
+    pub quant_params: Option<BLiteQuantizationParams>,
 }
 
 impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
@@ -47,6 +65,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         allocator: &mut impl ArenaAllocator,
         data_size: usize,
         dims: &[i32],
+        quant_params: Option<BLiteQuantizationParams>,
     ) -> Result<Self> {
         // TODO: should use check_mul
         let tot_size =
@@ -83,31 +102,37 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         return Ok(Self {
             data,
             dims: copied_dims,
+            quant_params,
         });
-    }
-
-    pub fn init(
-        data: &'a mut [T],
-        dims: &'a [i32],
-    ) -> Self {
-        Self { data, dims }
     }
 
     pub unsafe fn from_tflite_buffer(
         allocator: &mut impl ArenaAllocator,
         buffer: Buffer<'a>,
         shape: Vector<'a, i32>,
+        quant_params: Option<BLiteQuantizationParams>,
     ) -> Result<Self> {
+        println!("{:?}", buffer);
         if let Some(buffer_data) = buffer.data() {
             let data = from_tflite_vector_mut(&buffer_data);
             let dims = from_tflite_vector(&shape);
-            Ok(Self { data, dims })
+            Ok(Self {
+                data,
+                dims,
+                quant_params,
+            })
         } else {
             let data_size = shape
                 .iter()
                 .fold(1usize, |x, acc| x * acc as usize);
             let dims = from_tflite_vector(&shape);
-            Self::new(allocator, data_size, dims)
+
+            Self::new(
+                allocator,
+                data_size,
+                dims,
+                quant_params,
+            )
         }
     }
 

@@ -8,6 +8,17 @@ pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
         op_code: i32,
         activation: Option<fn(T) -> T>,
     },
+    FullyConnectedInt8Options {
+        op_code: i32,
+        activation: Option<fn(T) -> T>,
+        input_offset: i32,
+        weight_offset: i32,
+        output_offset: i32,
+        output_multiplier: i32,
+        output_shift: i32,
+        // output_activation_min: i32,
+        // outpu_activation_max: i32,
+    },
     Conv2DOptions {
         op_code: i32,
         activation: Option<fn(T) -> T>,

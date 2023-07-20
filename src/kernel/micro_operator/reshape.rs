@@ -3,7 +3,7 @@ use crate::kernel::micro_builtin_options::{
 };
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::InCompatibelShape;
+use crate::micro_erros::BLiteError::InCompatibleShape;
 use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
@@ -60,7 +60,7 @@ impl Reshape {
         let output_elems =
             output.dims.iter().fold(1, |x, acc| x * acc);
         if input_elems != output_elems {
-            return Err(InCompatibelShape(
+            return Err(InCompatibleShape(
                 input_elems,
                 output_elems,
             ));

@@ -1,9 +1,12 @@
+use num_traits::{AsPrimitive, FromPrimitive};
+
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption, BLiteBuiltinOption::*,
 };
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::NotFoundOption;
+use crate::micro_erros::BLiteError::*;
 use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
@@ -82,10 +85,15 @@ impl SoftMax {
             let mut sum: T = Default::default();
             for c in 0..depth {
                 let idx = (i * depth + c) as usize;
-                let exp_c =
-                    ((input.data[idx] - max).into() * beta)
-                        .exp()
-                        .into();
+                let Some(exp_c) = FromPrimitive::from_f32(
+                    (AsPrimitive::<f32>::as_(
+                        input.data[idx] - max,
+                    ) * beta)
+                        .exp(),
+                ) else {
+                    return Err(InCompatibleCasting)
+                };
+
                 output.data[idx] = exp_c;
                 sum = sum + exp_c;
             }

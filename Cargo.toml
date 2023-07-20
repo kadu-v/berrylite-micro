@@ -16,6 +16,7 @@ kyewords = ["Tensorflow Lite", "no_std"]
 
 [dependencies]
 flatbuffers = "*"
+num-traits = "0.2"
 
 [features]
 default = ["std"]

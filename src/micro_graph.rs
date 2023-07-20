@@ -1,7 +1,9 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_array::{ArrayElem, BLiteArray};
+use crate::micro_array::{
+    ArrayElem, BLiteArray, BLiteQuantizationParams,
+};
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_node::BLiteNode;
@@ -11,6 +13,7 @@ use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::{
     self, Buffer, Model, Operator, OperatorCode,
+    QuantizationParameters,
 };
 
 use core::cell::RefCell;
@@ -196,13 +199,20 @@ where
             for (i, tensor) in
                 subgraph_tensors.iter().enumerate()
             {
+                println!("{:?}", tensor);
+                let quant_params = tensor.quantization();
+                let blite_quant_params =
+                    Self::parse_quant_params(quant_params);
                 let tensor_idx = tensor.buffer();
                 let buffer =
                     buffers.get(tensor_idx as usize);
                 let dims = tensor.shape().unwrap();
                 let tflite_tensor = unsafe {
                     BLiteArray::from_tflite_buffer(
-                        allocator, buffer, dims,
+                        allocator,
+                        buffer,
+                        dims,
+                        blite_quant_params,
                     )?
                 };
                 tensors[i] = RefCell::new(tflite_tensor);
@@ -210,6 +220,30 @@ where
             Ok(tensors)
         } else {
             Err(NotFoundTensor)
+        }
+    }
+
+    fn parse_quant_params(
+        quant_params: Option<QuantizationParameters<'a>>,
+    ) -> Option<BLiteQuantizationParams> {
+        println!("{:?}", quant_params);
+        if let Some(quant_params) = quant_params {
+            let Some(scale) =
+                quant_params.scale().map(|x| x.get(0)) else {
+                    return None
+                };
+            let Some(zero_point) = quant_params
+                .zero_point()
+                .map(|x| x.get(0)) else {
+                    return None;
+                };
+
+            Some(BLiteQuantizationParams::new(
+                scale,
+                zero_point as i32,
+            ))
+        } else {
+            None
         }
     }
 

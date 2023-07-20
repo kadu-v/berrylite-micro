@@ -29,7 +29,11 @@ pub enum BLiteError {
     // micro fully connected
     NotInitializeActivation,
     NotFoundOption,
+    InCompatibleCasting,
+
+    // micro fully connected int8
+    NotMatchScale(f32),
 
     // micro reshape
-    InCompatibelShape(i32, i32),
+    InCompatibleShape(i32, i32),
 }
