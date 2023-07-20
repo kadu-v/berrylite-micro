@@ -125,6 +125,7 @@ impl Conv2D {
         let filter_width = filter.dims[2];
         let filter_input_depth = filter.dims[3];
 
+        // Why does a bias exist depsite of setting use_bias=False
         let idx_bias = node.inputs[2] as usize;
         let bias = tensors[idx_bias].borrow();
         let idx_output = node.outputs[0] as usize;
@@ -199,9 +200,8 @@ impl Conv2D {
                                         .data
                                         [filter_v_idx
                                             as usize];
-                                    total = total
-                                        + (input_v
-                                            * filter_v);
+                                    total +=
+                                        input_v * filter_v;
                                 }
                             }
                         }

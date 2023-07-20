@@ -204,9 +204,8 @@ impl DepthWiseConv2D {
                                                     .data
                                                     [filter_v_idx
                                                         as usize];
-                                        total = total
-                                            + (input_v
-                                                * filter_v);
+                                        total += input_v
+                                            * filter_v;
                                     }
                                 }
                             }

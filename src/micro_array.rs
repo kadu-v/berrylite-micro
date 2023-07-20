@@ -8,9 +8,11 @@ use crate::micro_slice::{
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
-use core::ops::{Add, Mul};
+use core::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub,
+    SubAssign,
+};
 use core::slice::from_raw_parts_mut;
-use std::ops::{Div, Sub};
 
 /*-----------------------------------------------------------------------------*/
 pub trait ArrayElem<T> = Debug
@@ -20,6 +22,10 @@ pub trait ArrayElem<T> = Debug
     + Mul<Output = T>
     + Sub<Output = T>
     + Div<Output = T>
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
     + PartialEq
     + PartialOrd
     + From<f32>

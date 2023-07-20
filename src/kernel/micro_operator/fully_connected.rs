@@ -68,9 +68,6 @@ impl OpFullyConnected {
         let idx_filter = node.inputs[1] as usize;
         let filter = tensors[idx_filter].borrow();
 
-        let idx_bias = node.inputs[2] as usize;
-        let bias = tensors[idx_bias].borrow();
-
         let idx_output = node.outputs[0] as usize;
         let mut output = tensors[idx_output].borrow_mut();
 
@@ -96,15 +93,22 @@ impl OpFullyConnected {
             for out_d in 0..output_depth {
                 let mut total: T = Default::default();
                 for acc_d in 0..accum_depth {
-                    total = total
-                        + input.data
-                            [batch * accum_depth + acc_d]
-                            * filter.data[out_d
-                                * accum_depth
-                                + acc_d];
+                    total += input.data
+                        [batch * accum_depth + acc_d]
+                        * filter.data
+                            [out_d * accum_depth + acc_d];
                 }
                 output.data[batch * output_depth + out_d] =
-                    total + bias.data[out_d];
+                    total;
+
+                let idx_bias = node.inputs[2];
+                if idx_bias >= 0 {
+                    let bias =
+                        tensors[idx_bias as usize].borrow();
+                    output.data
+                        [batch * output_depth + out_d] +=
+                        bias.data[out_d];
+                }
             }
         }
         if let Some(activation) = activation {
