@@ -9,7 +9,7 @@ use core::f32::consts::PI;
 const BUFFER: &[u8; 3164] =
     include_bytes!("../models/hello_world_float.tflite");
 
-const ARENA_SIZE: usize = 1 * 1024;
+const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
