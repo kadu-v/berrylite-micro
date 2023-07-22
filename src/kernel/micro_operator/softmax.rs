@@ -10,6 +10,9 @@ use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
+// Importing Float module is necessary to calculate the exponential of a f32 value.
+#[allow(unused_imports)]
+use num_traits::Float;
 
 use crate::kernel::micro_operator::BLiteOperator;
 

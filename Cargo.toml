@@ -15,9 +15,19 @@ kyewords = ["Tensorflow Lite", "no_std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flatbuffers = "*"
+
+[dependencies.num-traits]
+version = "0.2"
+default-features = false
+features = ["libm"]
+
+
+[dependencies.flatbuffers]
+version = "*"
+default-features = false
+
 
 [features]
-default = ["std"]
+default = ["no_std"]
 # Use Rust std library
-std = []
+no_std = []

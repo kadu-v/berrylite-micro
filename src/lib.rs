@@ -1,4 +1,6 @@
 #![feature(trait_alias)]
+#![feature(core_intrinsics)]
+#![no_std]
 pub mod builtin_op_data;
 pub mod kernel;
 pub mod micro_allocator;

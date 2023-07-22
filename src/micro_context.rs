@@ -1,5 +1,5 @@
 use core::fmt::Debug;
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct BLiteContext<'a, T>
