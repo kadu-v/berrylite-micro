@@ -12,6 +12,8 @@ pub trait ArenaAllocator {
         size: usize,
         align: usize,
     );
+
+    fn description(&self) -> Result<(usize, usize)>;
 }
 pub struct BumpArenaAllocator {
     arena: &'static mut [u8],
@@ -59,5 +61,9 @@ impl ArenaAllocator for BumpArenaAllocator {
         _align: usize,
     ) {
         todo!()
+    }
+
+    fn description(&self) -> Result<(usize, usize)> {
+        Ok((self.arena.len(), self.next))
     }
 }

@@ -72,11 +72,10 @@ impl OpFullyConnectedInt8 {
         //         bias_scale,
         //     );
         let activation = get_activation::<T>(op_code);
-        todo!()
-        // Ok(BLiteBuiltinOption::FullyConnectedInt8Options {
-        //     op_code,
-        //     activation,
-        // })
+        Ok(BLiteBuiltinOption::FullyConnectedOptions {
+            op_code,
+            activation,
+        })
     }
 
     // FullyConnectedParamsQuantized: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected_common.cc#L34
@@ -84,11 +83,12 @@ impl OpFullyConnectedInt8 {
     // CalculateOpDataFullyConnected: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected_common.cc#L62-L63
     fn get_quatized_convolutional_multiplier(
         input_scale: f32,
-        filte_scale: f32,
+        filter_scale: f32,
         output_scale: f32,
         bias_scale: Option<f32>,
     ) -> Result<f32> {
-        let input_product_scale = input_scale * filte_scale;
+        let input_product_scale =
+            input_scale * filter_scale;
         if let Some(bias_scale) = bias_scale {
             let scale_diff =
                 (input_product_scale - bias_scale).abs();

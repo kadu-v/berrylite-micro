@@ -1,11 +1,5 @@
-pub mod conv2d;
-pub mod depthwise_conv2d;
-pub mod fully_connected;
-pub mod fully_connected_int8;
-pub mod max_pool2d;
-pub mod padding;
-pub mod reshape;
-pub mod softmax;
+pub mod f32;
+pub mod u8;
 
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;

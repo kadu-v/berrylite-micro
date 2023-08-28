@@ -1,4 +1,4 @@
-use berrylite::kernel::micro_operator::{
+use berrylite::kernel::micro_operator::f32::{
     conv2d::Conv2D, fully_connected::OpFullyConnected,
     max_pool2d::MaxPool2D, reshape::Reshape,
 };

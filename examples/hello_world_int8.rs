@@ -1,5 +1,5 @@
-use berrylite::kernel::micro_operator::fully_connected_int8::OpFullyConnectedInt8;
-use berrylite::micro_allocator::BumpArenaAllocator;
+use berrylite::kernel::micro_operator::u8::fully_connected_u8::OpFullyConnectedInt8;
+use berrylite::micro_allocator::{BumpArenaAllocator, ArenaAllocator};
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
@@ -13,19 +13,19 @@ const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
-    interpreter: &mut BLiteInterpreter<'_, i8>,
-    input: i8,
+    interpreter: &mut BLiteInterpreter<'_, u8>,
+    input: u8,
 ) {
     interpreter.input.data[0] = input;
 }
 
-fn predict(input: i8) -> Result<i8> {
+fn predict(input: u8) -> Result<u8> {
     let model = tflite::root_as_model(BUFFER).unwrap();
 
     let mut allocator =
         unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<1, i8>::new();
+    let mut op_resolver = BLiteOpResolver::<1, u8>::new();
     op_resolver.add_op(
         OpFullyConnectedInt8::fully_connected_int8(),
     )?;
@@ -36,6 +36,7 @@ fn predict(input: i8) -> Result<i8> {
         &model,
     )?;
 
+    println!("{:?}", allocator.description());
     set_input(&mut interpreter, input);
     interpreter.invoke()?;
 

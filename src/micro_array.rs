@@ -16,7 +16,6 @@ use core::ops::{
 use core::slice::from_raw_parts_mut;
 
 /*-----------------------------------------------------------------------------*/
-
 #[derive(Debug, Clone, Copy)]
 pub struct BLiteQuantizationParams {
     pub scale: f32,
@@ -45,7 +44,7 @@ pub trait ArrayElem<T: 'static + Clone + Copy> =
         + PartialEq
         + PartialOrd
         + AsPrimitive<f32>
-        + AsPrimitive<i8>
+        + AsPrimitive<u8>
         + FromPrimitive
         + Default;
 

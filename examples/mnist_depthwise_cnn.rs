@@ -1,10 +1,12 @@
-use berrylite::kernel::micro_operator::softmax::SoftMax;
-use berrylite::kernel::micro_operator::{
+use berrylite::kernel::micro_operator::f32::{
     conv2d::Conv2D, depthwise_conv2d::DepthWiseConv2D,
     fully_connected::OpFullyConnected,
     max_pool2d::MaxPool2D, reshape::Reshape,
+    softmax::SoftMax,
 };
-use berrylite::micro_allocator::BumpArenaAllocator;
+use berrylite::micro_allocator::{
+    ArenaAllocator, BumpArenaAllocator,
+};
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
@@ -13,7 +15,7 @@ use berrylite::tflite_schema_generated::tflite;
 const BUFFER: &[u8; 419572] =
     include_bytes!("../models/mnist_depthwise_cnn.tflite");
 
-const ARENA_SIZE: usize = 1024 * 1024;
+const ARENA_SIZE: usize = 210 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
@@ -50,6 +52,8 @@ fn predict() -> Result<usize> {
         &op_resolver,
         &model,
     )?;
+
+    println!("{:?}", allocator.description());
 
     set_input(&mut interpreter, 28, 28);
     interpreter.invoke()?;
