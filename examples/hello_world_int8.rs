@@ -1,71 +1,63 @@
 use berrylite::kernel::micro_operator::u8::fully_connected_u8::OpFullyConnectedInt8;
-use berrylite::micro_allocator::{BumpArenaAllocator, ArenaAllocator};
+use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
-const BUFFER: &[u8; 2704] =
-    include_bytes!("../models/hello_world_int8.tflite");
+const BUFFER: &[u8; 2704] = include_bytes!("../models/hello_world_int8.tflite");
 
 const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
-fn set_input(
-    interpreter: &mut BLiteInterpreter<'_, u8>,
-    input: u8,
-) {
+fn set_input(interpreter: &mut BLiteInterpreter<'_, u8>, input: u8) {
     interpreter.input.data[0] = input;
 }
 
-fn predict(input: u8) -> Result<u8> {
+fn predict() -> Result<()> {
     let model = tflite::root_as_model(BUFFER).unwrap();
 
-    let mut allocator =
-        unsafe { BumpArenaAllocator::new(&mut ARENA) };
+    let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
     let mut op_resolver = BLiteOpResolver::<1, u8>::new();
-    op_resolver.add_op(
-        OpFullyConnectedInt8::fully_connected_int8(),
-    )?;
+    op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
 
-    let mut interpreter = BLiteInterpreter::new(
-        &mut allocator,
-        &op_resolver,
-        &model,
-    )?;
+    let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
 
-    println!("{:?}", allocator.description());
-    set_input(&mut interpreter, input);
-    interpreter.invoke()?;
+    let (input_scale, input_zero_point) = interpreter.get_input_quantization_params().unwrap();
+    let (output_scale, output_zero_point) = interpreter.get_output_quantization_params().unwrap();
 
-    let output = interpreter.output;
+    let delta = 0.05;
+    let golden_inputs_f32_inputs = [
+        (-96, 0.77f32),
+        // (-63, 1.57), (-34, 2.3), (0, 3.14)
+    ];
+    for (g_input, g_f32_input) in golden_inputs_f32_inputs {
+        let input = g_input - input_zero_point;
+        println!(
+            "[Input]: {} {} {} {}",
+            g_input,
+            input_scale,
+            input_zero_point,
+            input_scale * (g_input - input_zero_point) as f32
+        );
+        set_input(&mut interpreter, input as u8);
+        interpreter.invoke()?;
+        let output = interpreter.output.data[0];
 
-    Ok(output.data[0])
+        let y_pred = (output as i32 - output_zero_point) as f32 * output_scale;
+        let g_truth_output = g_f32_input.sin();
+        println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth: {g_truth_output:.8}");
+        if (y_pred - g_truth_output).abs() < delta {
+            println!("Error!: abs :{}", (y_pred - g_truth_output).abs());
+        }
+    }
+
+    Ok(())
 }
 
 fn main() {
-    let delta = 0.05;
-    let inputs = [1];
-    for input in inputs {
-        // let input = input * PI
-        let y_pred = match predict(input) {
-            Ok(y_pred) => y_pred,
-            Err(e) => {
-                println!("Error: {:?}", e);
-                return;
-            }
-        };
-        // let ground_truth = input.sin();
-        // println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth: {ground_truth:.8}");
-        // if (y_pred - ground_truth).abs() > delta {
-        //     println!(
-        //         "Error!: abs :{}",
-        //         (y_pred - ground_truth).abs()
-        //     );
-        //     return;
-        // }
-    }
+    predict();
     println!("Inference Success!!");
 }

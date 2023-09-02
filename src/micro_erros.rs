@@ -23,7 +23,7 @@ pub enum BLiteError {
     NotFoundOperator(i32),
     OpIndexOutOfBound,
 
-    // micro builtint options
+    // micro builtin options
     NotCompatibleOption,
 
     // micro fully connected
@@ -32,8 +32,9 @@ pub enum BLiteError {
     InCompatibleCasting,
 
     // micro fully connected int8
-    NotMatchScale(f32),
+    NotMatchScale(f64),
 
     // micro reshape
     InCompatibleShape(i32, i32),
+    //
 }

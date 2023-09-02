@@ -8,11 +8,12 @@ pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
         op_code: i32,
         activation: Option<fn(T) -> T>,
     },
-    FullyConnectedInt8Options {
+    /// input/filter/output_offset are negative values of input/filter/output_zero_point
+    QuantizedFullyConnectedOptions {
         op_code: i32,
         activation: Option<fn(T) -> T>,
         input_offset: i32,
-        weight_offset: i32,
+        filter_offset: i32,
         output_offset: i32,
         output_multiplier: i32,
         output_shift: i32,
@@ -20,7 +21,7 @@ pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
         // outpu_activation_max: i32,
     },
     Conv2DOptions {
-        op_code: i32,
+        op_code: i32, // activation operator code
         activation: Option<fn(T) -> T>,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,

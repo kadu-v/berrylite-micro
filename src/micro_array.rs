@@ -3,16 +3,11 @@ use num_traits::{AsPrimitive, FromPrimitive, NumCast};
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::{BLiteError::*, Result};
-use crate::micro_slice::{
-    from_tflite_vector, from_tflite_vector_mut,
-};
+use crate::micro_slice::{from_tflite_vector, from_tflite_vector_mut};
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
-use core::ops::{
-    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub,
-    SubAssign,
-};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use core::slice::from_raw_parts_mut;
 
 /*-----------------------------------------------------------------------------*/
@@ -29,24 +24,23 @@ impl BLiteQuantizationParams {
 }
 
 /*-----------------------------------------------------------------------------*/
-pub trait ArrayElem<T: 'static + Clone + Copy> =
-    Debug
-        + Clone
-        + Copy
-        + Add<Output = T>
-        + Mul<Output = T>
-        + Sub<Output = T>
-        + Div<Output = T>
-        + AddAssign
-        + SubAssign
-        + MulAssign
-        + DivAssign
-        + PartialEq
-        + PartialOrd
-        + AsPrimitive<f32>
-        + AsPrimitive<u8>
-        + FromPrimitive
-        + Default;
+pub trait ArrayElem<T: 'static + Clone + Copy> = Debug
+    + Clone
+    + Copy
+    + Add<Output = T>
+    + Mul<Output = T>
+    + Sub<Output = T>
+    + Div<Output = T>
+    + AddAssign
+    + SubAssign
+    + MulAssign
+    + DivAssign
+    + PartialEq
+    + PartialOrd
+    + AsPrimitive<f32>
+    + AsPrimitive<u8>
+    + FromPrimitive
+    + Default;
 
 #[derive(Debug)]
 pub struct BLiteArray<'a, T>
@@ -67,32 +61,19 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         quant_params: Option<BLiteQuantizationParams>,
     ) -> Result<Self> {
         // TODO: should use check_mul
-        let tot_size =
-            dims.iter().fold(1, |x, &acc| x * acc);
+        let tot_size = dims.iter().fold(1, |x, &acc| x * acc);
 
         if tot_size != data_size as i32 {
             return Err(NotMatchSize);
         }
 
-        let data_row_ptr = allocator.alloc(
-            size_of::<T>() * data_size,
-            align_of::<T>(),
-        )?;
+        let data_row_ptr = allocator.alloc(size_of::<T>() * data_size, align_of::<T>())?;
 
-        let data = from_raw_parts_mut(
-            data_row_ptr as *mut T,
-            data_size,
-        );
+        let data = from_raw_parts_mut(data_row_ptr as *mut T, data_size);
 
-        let dims_row_ptr = allocator.alloc(
-            size_of::<usize>() * dims.len(),
-            align_of::<usize>(),
-        )?;
+        let dims_row_ptr = allocator.alloc(size_of::<usize>() * dims.len(), align_of::<usize>())?;
 
-        let copied_dims = from_raw_parts_mut(
-            dims_row_ptr as *mut i32,
-            dims.len(),
-        );
+        let copied_dims = from_raw_parts_mut(dims_row_ptr as *mut i32, dims.len());
 
         for (i, &e) in dims.iter().enumerate() {
             copied_dims[i] = e;
@@ -111,7 +92,6 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         shape: Vector<'a, i32>,
         quant_params: Option<BLiteQuantizationParams>,
     ) -> Result<Self> {
-        println!("{:?}", buffer);
         if let Some(buffer_data) = buffer.data() {
             let data = from_tflite_vector_mut(&buffer_data);
             let dims = from_tflite_vector(&shape);
@@ -121,21 +101,19 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
                 quant_params,
             })
         } else {
-            let data_size = shape
-                .iter()
-                .fold(1usize, |x, acc| x * acc as usize);
+            let data_size = shape.iter().fold(1usize, |x, acc| x * acc as usize);
             let dims = from_tflite_vector(&shape);
 
-            Self::new(
-                allocator,
-                data_size,
-                dims,
-                quant_params,
-            )
+            Self::new(allocator, data_size, dims, quant_params)
         }
     }
 
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    pub fn get_quantization_scale_and_zero_point(&self) -> Option<(f32, i32)> {
+        self.quant_params
+            .map(|quant_params| (quant_params.scale, quant_params.zero_point))
     }
 }

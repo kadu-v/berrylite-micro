@@ -24,11 +24,7 @@ where
         op_resolver: &BLiteOpResolver<N, T>,
         model: &'a Model<'a>,
     ) -> Result<Self> {
-        let graph = BLiteGraph::allocate_graph(
-            allocator,
-            op_resolver,
-            model,
-        )?;
+        let graph = BLiteGraph::allocate_graph(allocator, op_resolver, model)?;
 
         let subgraph = model.subgraphs().unwrap().get(0);
         assert_eq!(
@@ -37,12 +33,9 @@ where
             "Expected the length of input is 1, but got {}",
             Self::input_size(model)
         );
-        let input_index =
-            subgraph.inputs().unwrap().get(0) as usize;
+        let input_index = subgraph.inputs().unwrap().get(0) as usize;
         let input = unsafe {
-            &mut *(graph.subgraphs[0].borrow().tensors
-                [input_index]
-                .as_ptr()
+            &mut *(graph.subgraphs[0].borrow().tensors[input_index].as_ptr()
                 as *mut BLiteArray<'a, T>)
         };
 
@@ -52,12 +45,9 @@ where
             "Expected the length of output is 1, but got {}",
             Self::output_size(model)
         );
-        let output_index =
-            subgraph.outputs().unwrap().get(0) as usize;
+        let output_index = subgraph.outputs().unwrap().get(0) as usize;
         let output = unsafe {
-            &*(graph.subgraphs[0].borrow().tensors
-                [output_index]
-                .as_ptr()
+            &*(graph.subgraphs[0].borrow().tensors[output_index].as_ptr()
                 as *const BLiteArray<'a, T>)
         };
 
@@ -69,26 +59,22 @@ where
     }
 
     fn input_size(model: &Model<'a>) -> usize {
-        model
-            .subgraphs()
-            .unwrap()
-            .get(0)
-            .inputs()
-            .unwrap()
-            .len()
+        model.subgraphs().unwrap().get(0).inputs().unwrap().len()
     }
 
     fn output_size(model: &Model<'a>) -> usize {
-        model
-            .subgraphs()
-            .unwrap()
-            .get(0)
-            .outputs()
-            .unwrap()
-            .len()
+        model.subgraphs().unwrap().get(0).outputs().unwrap().len()
     }
 
     pub fn invoke(&self) -> Result<()> {
         self.graph.invoke()
+    }
+
+    pub fn get_input_quantization_params(&self) -> Option<(f32, i32)> {
+        self.input.get_quantization_scale_and_zero_point()
+    }
+
+    pub fn get_output_quantization_params(&self) -> Option<(f32, i32)> {
+        self.output.get_quantization_scale_and_zero_point()
     }
 }

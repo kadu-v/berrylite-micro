@@ -1,9 +1,7 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_array::{
-    ArrayElem, BLiteArray, BLiteQuantizationParams,
-};
+use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::{BLiteError::*, Result};
 use crate::micro_node::BLiteNode;
@@ -12,8 +10,7 @@ use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::{
-    self, Buffer, Model, Operator, OperatorCode,
-    QuantizationParameters,
+    self, Buffer, Model, Operator, OperatorCode, QuantizationParameters,
 };
 
 use core::cell::RefCell;
@@ -26,12 +23,9 @@ use core::{
 /* Type synonyms for TFLiteGraph                                               */
 /*-----------------------------------------------------------------------------*/
 type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
-type TFLiteOperators<'a> =
-    Vector<'a, ForwardsUOffset<Operator<'a>>>;
-type TFLiteOperatorCodes<'a> =
-    Vector<'a, ForwardsUOffset<OperatorCode<'a>>>;
-type TFLiteBuffers<'a> =
-    Vector<'a, ForwardsUOffset<Buffer<'a>>>;
+type TFLiteOperators<'a> = Vector<'a, ForwardsUOffset<Operator<'a>>>;
+type TFLiteOperatorCodes<'a> = Vector<'a, ForwardsUOffset<OperatorCode<'a>>>;
+type TFLiteBuffers<'a> = Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
 /*-----------------------------------------------------------------------------*/
 /* Struct for a graph                                                          */
@@ -65,19 +59,20 @@ where
             return Err(NotFoundOperatorCodes);
         };
 
-        assert_eq!(subgraphs.len(), 1, "expected the length of subgraphs is 1, but got {}", subgraphs.len());
+        assert_eq!(
+            subgraphs.len(),
+            1,
+            "expected the length of subgraphs is 1, but got {}",
+            subgraphs.len()
+        );
         let blite_subgraphs = unsafe {
             let row_ptr = allocator.alloc(
-                subgraphs.len()
-                    * size_of::<
-                        RefCell<BLiteSubgraph<'a, T>>,
-                    >(),
+                subgraphs.len() * size_of::<RefCell<BLiteSubgraph<'a, T>>>(),
                 align_of::<RefCell<BLiteSubgraph<'a, T>>>(),
             )?;
 
             from_raw_parts_mut(
-                row_ptr
-                    as *mut RefCell<BLiteSubgraph<'a, T>>,
+                row_ptr as *mut RefCell<BLiteSubgraph<'a, T>>,
                 subgraphs.len(),
             )
         };
@@ -86,17 +81,15 @@ where
                 return Err(NotFoundOperators)
             };
 
-            let blite_subgraph =
-                BLiteSubgraph::allocate_subgraph(
-                    allocator,
-                    &op_resolver,
-                    &subgraph,
-                    &operators,
-                    &operator_codes,
-                    &buffers,
-                )?;
-            blite_subgraphs[i] =
-                RefCell::new(blite_subgraph);
+            let blite_subgraph = BLiteSubgraph::allocate_subgraph(
+                allocator,
+                &op_resolver,
+                &subgraph,
+                &operators,
+                &operator_codes,
+                &buffers,
+            )?;
+            blite_subgraphs[i] = RefCell::new(blite_subgraph);
         }
         Ok(Self {
             subgraphs: blite_subgraphs,
@@ -120,8 +113,7 @@ pub struct BLiteSubgraph<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
-    pub node_and_registrations:
-        &'a [(BLiteNode<'a>, BLiteRegistration<T>)],
+    pub node_and_registrations: &'a [(BLiteNode<'a>, BLiteRegistration<T>)],
     pub tensors: &'a mut [BLiteTensor<'a, T>],
 }
 
@@ -130,10 +122,7 @@ where
     T: ArrayElem<T> + 'a,
 {
     pub fn new(
-        node_and_registrations: &'a [(
-            BLiteNode<'a>,
-            BLiteRegistration<T>,
-        )],
+        node_and_registrations: &'a [(BLiteNode<'a>, BLiteRegistration<T>)],
         tensors: &'a mut [BLiteTensor<'a, T>],
     ) -> Self {
         Self {
@@ -150,9 +139,7 @@ where
         operator_codes: &TFLiteOperatorCodes<'a>,
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<Self> {
-        let tensors = Self::allocate_eval_tensors(
-            allocator, subgraph, buffers,
-        )?;
+        let tensors = Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
 
         let node_and_registrations = unsafe {
             Self::allocate_node_and_registrations(
@@ -176,44 +163,30 @@ where
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
         // size of allocated tensors
-        let tensors_size =
-            subgraph.tensors().unwrap().len();
+        let tensors_size = subgraph.tensors().unwrap().len();
 
         // Note that tensors
         let tensors = unsafe {
             match allocator.alloc(
-                size_of::<BLiteTensor<'a, T>>()
-                    * tensors_size,
+                size_of::<BLiteTensor<'a, T>>() * tensors_size,
                 align_of::<BLiteTensor<'a, T>>(),
             ) {
-                Ok(tensors_row_ptr) => from_raw_parts_mut(
-                    tensors_row_ptr
-                        as *mut BLiteTensor<'a, T>,
-                    tensors_size,
-                ),
+                Ok(tensors_row_ptr) => {
+                    from_raw_parts_mut(tensors_row_ptr as *mut BLiteTensor<'a, T>, tensors_size)
+                }
                 Err(err) => return Err(err),
             }
         };
 
         if let Some(subgraph_tensors) = subgraph.tensors() {
-            for (i, tensor) in
-                subgraph_tensors.iter().enumerate()
-            {
-                println!("{:?}", tensor);
+            for (i, tensor) in subgraph_tensors.iter().enumerate() {
                 let quant_params = tensor.quantization();
-                let blite_quant_params =
-                    Self::parse_quant_params(quant_params);
+                let blite_quant_params = Self::parse_quant_params(quant_params);
                 let tensor_idx = tensor.buffer();
-                let buffer =
-                    buffers.get(tensor_idx as usize);
+                let buffer = buffers.get(tensor_idx as usize);
                 let dims = tensor.shape().unwrap();
                 let tflite_tensor = unsafe {
-                    BLiteArray::from_tflite_buffer(
-                        allocator,
-                        buffer,
-                        dims,
-                        blite_quant_params,
-                    )?
+                    BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
                 };
                 tensors[i] = RefCell::new(tflite_tensor);
             }
@@ -226,7 +199,6 @@ where
     fn parse_quant_params(
         quant_params: Option<QuantizationParameters<'a>>,
     ) -> Option<BLiteQuantizationParams> {
-        println!("{:?}", quant_params);
         if let Some(quant_params) = quant_params {
             let Some(scale) =
                 quant_params.scale().map(|x| x.get(0)) else {
@@ -238,58 +210,34 @@ where
                     return None;
                 };
 
-            Some(BLiteQuantizationParams::new(
-                scale,
-                zero_point as i32,
-            ))
+            Some(BLiteQuantizationParams::new(scale, zero_point as i32))
         } else {
             None
         }
     }
 
-    unsafe fn allocate_node_and_registrations<
-        const N: usize,
-    >(
+    unsafe fn allocate_node_and_registrations<const N: usize>(
         op_resolver: &BLiteOpResolver<N, T>,
         allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         operator_codes: &TFLiteOperatorCodes<'a>,
         tensors: &mut [BLiteTensor<'a, T>],
-    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegistration<T>)]>
-    {
-        let node_and_registrations_row_ptr = allocator
-            .alloc(
-                size_of::<(
-                    BLiteNode<'_>,
-                    BLiteRegistration<T>,
-                )>() * operators.len(),
-                align_of::<(
-                    BLiteNode<'_>,
-                    BLiteRegistration<T>,
-                )>(),
-            )?;
+    ) -> Result<&'a [(BLiteNode<'a>, BLiteRegistration<T>)]> {
+        let node_and_registrations_row_ptr = allocator.alloc(
+            size_of::<(BLiteNode<'_>, BLiteRegistration<T>)>() * operators.len(),
+            align_of::<(BLiteNode<'_>, BLiteRegistration<T>)>(),
+        )?;
         let node_and_registrations = from_raw_parts_mut(
-            node_and_registrations_row_ptr
-                as *mut (
-                    BLiteNode<'_>,
-                    BLiteRegistration<T>,
-                ),
+            node_and_registrations_row_ptr as *mut (BLiteNode<'_>, BLiteRegistration<T>),
             operators.len(),
         );
 
         for (i, op) in operators.iter().enumerate() {
             let inputs = op.inputs().unwrap();
             let outputs = op.outputs().unwrap();
-            let node =
-                Self::allocate_node(&inputs, &outputs)?;
-            let registration = Self::alloc_registration(
-                op_resolver,
-                &op,
-                operator_codes,
-                tensors,
-            )?;
-            node_and_registrations[i] =
-                (node, registration);
+            let node = Self::allocate_node(&inputs, &outputs)?;
+            let registration = Self::alloc_registration(op_resolver, &op, operator_codes, tensors)?;
+            node_and_registrations[i] = (node, registration);
         }
 
         Ok(node_and_registrations)
@@ -320,8 +268,7 @@ where
 
         let op_code = operator_codes.get(idx as usize);
         let builtin_code = op_code.builtin_code();
-        let blite_op =
-            op_resolver.find_op(&builtin_code)?;
+        let blite_op = op_resolver.find_op(&builtin_code)?;
         let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
         let builtin_option = parser(*op, tensors).unwrap();
@@ -332,20 +279,13 @@ where
     }
 
     pub fn invoke(&mut self) -> Result<()> {
-        let node_and_registrations =
-            self.node_and_registrations;
+        let node_and_registrations = self.node_and_registrations;
 
         let ctx = BLiteContext::new();
 
-        for (_, (node, registration)) in
-            node_and_registrations.iter().enumerate()
-        {
-            let tensors = unsafe {
-                &mut *(self.tensors
-                    as *mut [BLiteTensor<_>])
-            };
-            let builtin_option =
-                registration.builtin_option;
+        for (_, (node, registration)) in node_and_registrations.iter().enumerate() {
+            let tensors = unsafe { &mut *(self.tensors as *mut [BLiteTensor<_>]) };
+            let builtin_option = registration.builtin_option;
             let eval = registration.eval;
             eval(&ctx, tensors, node, builtin_option)?;
         }
