@@ -50,7 +50,6 @@ where
         let Some(subgraphs) = model.subgraphs() else {
             return Err(NotFoundSubgraphs)
         };
-
         let Some(buffers) = model.buffers() else {
             return Err(NotFoundBuffers)
         };

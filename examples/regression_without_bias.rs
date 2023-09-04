@@ -4,9 +4,20 @@ use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
-use core::f32::consts::PI;
 
-const BUFFER: &[u8; 2704] = include_bytes!("../models/hello_world_int8.tflite");
+// 2 * x
+//----good----
+// const BUFFER: &[u8; 1112] = include_bytes!("../models/regression_without_bias_int8_1layer.tflite");
+// const BUFFER: &[u8; 1112] =
+// include_bytes!("../models/regression_without_bias_int8_1layer_2units.tflite");
+// const BUFFER: &[u8; 1424] =
+//     include_bytes!("../models/regression_without_bias_int8_2layer_1units.tflite");
+// const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_2-1.tflite");
+
+//----not good----
+const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_1-2.tflite");
+// const BUFFER: &[u8; 1424] = include_bytes!("../models/regression_without_bias_int8_2layer.tflite");
+// const BUFFER: &[u8; 1488] = include_bytes!("../models/regression_without_bias_int8.tflite");
 
 const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
@@ -28,31 +39,27 @@ fn predict() -> Result<()> {
     let (input_scale, input_zero_point) = interpreter.get_input_quantization_params().unwrap();
     let (output_scale, output_zero_point) = interpreter.get_output_quantization_params().unwrap();
 
-    let delta = 0.05;
-    let golden_inputs_f32_inputs = [
-        (-96, 0.77f32),
-        // (-63, 1.57), (-34, 2.3), (0, 3.14)
-    ];
-    for (g_input, g_f32_input) in golden_inputs_f32_inputs {
-        let input = g_input + input_zero_point;
-        println!(
-            "[Input]: {} {} {} {}",
-            g_input,
-            input_scale,
-            input_zero_point,
-            input_scale * (g_input - input_zero_point) as f32
-        );
+    let delta = 0.0001;
+    let mut golden_inputs_f32_inputs = vec![];
+    for i in -127..128 {
+        golden_inputs_f32_inputs.push(i);
+    }
+    for g_input in golden_inputs_f32_inputs {
+        let input = g_input;
+        let input = input as u8;
+
         set_input(&mut interpreter, input as u8);
         interpreter.invoke()?;
         let output = interpreter.output.data[0];
         let y_pred = (output as i32 - output_zero_point) as f32 * output_scale;
         let g_truth_input = input_scale * ((input as u8) as i32 - input_zero_point) as f32;
-        let g_truth_output = g_truth_input.sin();
-        println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth input: {g_truth_input:.8} ground truth: {g_truth_output:.8}");
-        if (y_pred - g_truth_output).abs() > delta {
-            println!("Error!: abs :{}", (y_pred - g_truth_output).abs());
-        }
+        let g_truth_output = 2. * g_truth_input as f32;
+        println!("zero_point: {input_zero_point}, input: {input:.8}, y_pred: {y_pred:.8}, g_input: {g_truth_input}, ground truth: {g_truth_output:.8}");
+        // if (y_pred - g_truth_output).abs() > delta {
+        //     println!("Error!: abs :{}", (y_pred - g_truth_output).abs());
+        // }
     }
+    println!("[Input]: {} {}", input_scale, input_zero_point);
 
     Ok(())
 }

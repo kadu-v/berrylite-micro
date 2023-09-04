@@ -30,6 +30,7 @@ pub fn get_quantized_convolutional_multiplier(
     let multiplier = input_product_scale / output_scale;
     return Ok(multiplier);
 }
+
 /// This function calculates an integer multiplier and an integer shift offset from a real multiplier
 /// Note that real_multiplier is included in the interval (0, 1)
 /// Note also that an integer multiplier is represented as a fixed point float number
@@ -73,7 +74,7 @@ pub fn multiply_by_quantized_multiplier(
     quantized_multiplier: i32,
     shift: i32,
 ) -> Result<i32> {
-    if !(quantized_multiplier >= 0 && (shift > -31 && shift < 30)) {
+    if !(quantized_multiplier >= 0 && (-31 <= shift && shift <= 30)) {
         return Err(BLiteError::InCompatibleCasting);
     }
 
@@ -112,8 +113,9 @@ mod tests {
         }
     }
 
+    #[test]
     fn multiply_by_quantized_multiplier() {
-        let tt = [((1, 1, 1), 1)];
+        let tt = [((1, 2, 30), 1), ((1, 1, 1), 0), ((1, 2, -30), 0)];
         for (real_multiplier, expected) in tt {
             let (x, quantized_multiplier, shift) = real_multiplier;
             assert_eq!(

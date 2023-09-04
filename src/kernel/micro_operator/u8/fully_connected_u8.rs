@@ -1,5 +1,6 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
+use crate::kernel;
 use crate::kernel::kernel_utils::{
     get_quantized_convolutional_multiplier, multiply_by_quantized_multiplier, quantize_multiplier,
 };
@@ -13,7 +14,9 @@ use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
+use core::cmp::{max, min};
 use core::fmt::Debug;
+use std::borrow::BorrowMut;
 
 use crate::kernel::micro_operator::BLiteOperator;
 
@@ -59,11 +62,12 @@ impl OpFullyConnectedInt8 {
             };
             (scale, zero_point)
         };
-        let bias_scale = if op.inputs().unwrap().len() > 2 {
-            let bias_idx = op.inputs().unwrap().get(2) as usize;
+
+        let bias_idx = op.inputs().unwrap().get(2);
+        let bias_scale = if bias_idx >= 0 {
             let Some(BLiteQuantizationParams {
                 scale, ..
-             }) = tensors[bias_idx].borrow().quant_params else {
+             }) = tensors[bias_idx as usize].borrow().quant_params else {
                  return Err(BLiteError::FailedToAllocateMemory);
              };
             Some(scale)
@@ -112,15 +116,6 @@ impl OpFullyConnectedInt8 {
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
-        let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input].borrow();
-
-        let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter].borrow();
-
-        let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output].borrow_mut();
-
         let QuantizedFullyConnectedOptions {
             op_code,
             activation,
@@ -132,47 +127,110 @@ impl OpFullyConnectedInt8 {
         } = builtin_option else {
             return Err(NotInitializeActivation);
         };
-        let idx_bias = node.inputs[2];
-        let bias = tensors[idx_bias as usize].borrow();
-        println!("[Input]: {:?}", &input);
-        println!("[Filter]: {:?}", &filter);
-        println!("[Bias]: {:?}", &bias.len());
 
-        // TODO:
+        let idx_input = node.inputs[0] as usize;
+        let input = tensors[idx_input].borrow();
+
+        let idx_filter = node.inputs[1] as usize;
+        let filter = tensors[idx_filter].borrow();
+
+        let idx_output = node.outputs[0] as usize;
+        let mut output = tensors[idx_output].borrow_mut();
+
+        let idx_bias = node.inputs[2];
+
+        // println!("[Input]: {:?}", &input);
+        // println!("[Filter]: {:?}", &filter);
+        // println!("[Bias]: {:?}", &bias.len());
         let batches = 1usize;
         let output_depth = filter.dims[filter.dims.len() - 2] as usize;
         let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
 
-        for batch in 0..batches {
-            for out_d in 0..output_depth {
+        if idx_bias >= 0 {
+            let bias = tensors[idx_bias as usize].borrow();
+
+            Self::kernel(
+                input.data,
+                filter.data,
+                Some(bias.data.as_ref()),
+                output.data,
+                input_offset,
+                filter_offset,
+                output_offset,
+                output_depth,
+                output_multiplier,
+                output_shift,
+                accum_depth,
+                batches,
+                activation,
+            )
+        } else {
+            Self::kernel(
+                input.data,
+                filter.data,
+                None,
+                output.data,
+                input_offset,
+                filter_offset,
+                output_offset,
+                output_depth,
+                output_multiplier,
+                output_shift,
+                accum_depth,
+                batches,
+                activation,
+            )
+        }
+    }
+
+    fn kernel<'a, T: ArrayElem<T>>(
+        input_data: &[T],
+        filter_data: &[T],
+        bias_data: Option<&[T]>,
+        output_data: &mut [T],
+        input_offset: i32,
+        filter_offset: i32,
+        output_offset: i32,
+        output_depth: usize,
+        output_multiplier: i32,
+        output_shift: i32,
+        accum_depth: usize,
+        batches: usize,
+        activation: Option<fn(T) -> T>,
+    ) -> Result<()> {
+        // TODO:
+
+        for batch in 0usize..batches {
+            for out_d in 0usize..output_depth {
                 let mut total = 0;
-                for acc_d in 0..accum_depth {
+                for acc_d in 0usize..accum_depth {
                     let input_val =
-                        AsPrimitive::<u8>::as_(input.data[batch * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<u8>::as_(input_data[batch * accum_depth + acc_d]) as i32;
                     let filter_val =
-                        AsPrimitive::<u8>::as_(filter.data[out_d * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<u8>::as_(filter_data[out_d * accum_depth + acc_d]) as i32;
                     total += (input_val + input_offset) * (filter_val + filter_offset);
                 }
 
-                let idx_bias = node.inputs[2];
-                if idx_bias >= 0 {
-                    let bias = tensors[idx_bias as usize].borrow();
-                    total += AsPrimitive::<u8>::as_(bias.data[out_d]) as i32;
+                if let Some(bias_data) = bias_data {
+                    total += AsPrimitive::<u8>::as_(bias_data[out_d]) as i32;
                 }
 
                 total = multiply_by_quantized_multiplier(total, output_multiplier, output_shift)?;
                 total += output_offset;
+                dbg!(total);
+                total = max(total, core::i8::MIN as i32);
+                total = min(total, core::i8::MAX as i32);
                 // TODO: check the output value is included between the min and max of an output activation
-                output.data[batch * output_depth + out_d] =
+                output_data[batch * output_depth + out_d] =
                     FromPrimitive::from_u8(total as u8).unwrap();
+                // dbg!(total, output.data[batch * output_depth + out_d]);
             }
         }
         if let Some(activation) = activation {
-            for i in 0..output.data.len() {
-                output.data[i] = activation(output.data[i]);
+            for i in 0..output_data.len() {
+                output_data[i] = activation(output_data[i]);
             }
         }
-
         Ok(())
     }
 }
