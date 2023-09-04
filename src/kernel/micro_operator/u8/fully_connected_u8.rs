@@ -93,8 +93,7 @@ impl OpFullyConnectedInt8 {
         )?;
         let (output_multiplier, output_shift) = quantize_multiplier(real_multiplier)?;
 
-        let activation = get_activation::<T>(op_code);
-
+        let activation = get_activation::<i32>(op_code);
         Ok(BLiteBuiltinOption::QuantizedFullyConnectedOptions {
             op_code,
             activation: activation,
@@ -139,9 +138,6 @@ impl OpFullyConnectedInt8 {
 
         let idx_bias = node.inputs[2];
 
-        // println!("[Input]: {:?}", &input);
-        // println!("[Filter]: {:?}", &filter);
-        // println!("[Bias]: {:?}", &bias.len());
         let batches = 1usize;
         let output_depth = filter.dims[filter.dims.len() - 2] as usize;
         let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
@@ -196,41 +192,38 @@ impl OpFullyConnectedInt8 {
         output_shift: i32,
         accum_depth: usize,
         batches: usize,
-        activation: Option<fn(T) -> T>,
+        activation: Option<fn(i32) -> i32>,
     ) -> Result<()> {
-        // TODO:
-
         for batch in 0usize..batches {
             for out_d in 0usize..output_depth {
                 let mut total = 0;
                 for acc_d in 0usize..accum_depth {
                     let input_val =
-                        AsPrimitive::<u8>::as_(input_data[batch * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<i8>::as_(input_data[batch * accum_depth + acc_d]) as i32;
                     let filter_val =
-                        AsPrimitive::<u8>::as_(filter_data[out_d * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<i8>::as_(filter_data[out_d * accum_depth + acc_d]) as i32;
                     total += (input_val + input_offset) * (filter_val + filter_offset);
                 }
 
                 if let Some(bias_data) = bias_data {
-                    total += AsPrimitive::<u8>::as_(bias_data[out_d]) as i32;
+                    total += AsPrimitive::<i8>::as_(bias_data[out_d]) as i32;
                 }
 
                 total = multiply_by_quantized_multiplier(total, output_multiplier, output_shift)?;
+                // TODO: this code should be placed in the above loop.
+                if let Some(activation) = activation {
+                    total = activation(total);
+                }
+
                 total += output_offset;
-                dbg!(total);
                 total = max(total, core::i8::MIN as i32);
                 total = min(total, core::i8::MAX as i32);
-                // TODO: check the output value is included between the min and max of an output activation
+
                 output_data[batch * output_depth + out_d] =
-                    FromPrimitive::from_u8(total as u8).unwrap();
-                // dbg!(total, output.data[batch * output_depth + out_d]);
+                    FromPrimitive::from_i8(total as i8).unwrap();
             }
         }
-        if let Some(activation) = activation {
-            for i in 0..output_data.len() {
-                output_data[i] = activation(output_data[i]);
-            }
-        }
+
         Ok(())
     }
 }

@@ -11,7 +11,7 @@ pub enum BLiteBuiltinOption<T: Debug + ArrayElem<T>> {
     /// input/filter/output_offset are negative values of input/filter/output_zero_point
     QuantizedFullyConnectedOptions {
         op_code: i32,
-        activation: Option<fn(T) -> T>,
+        activation: Option<fn(i32) -> i32>,
         input_offset: i32,
         filter_offset: i32,
         output_offset: i32,

@@ -11,7 +11,7 @@ const BUFFER: &[u8; 2704] = include_bytes!("../models/hello_world_int8.tflite");
 const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
-fn set_input(interpreter: &mut BLiteInterpreter<'_, u8>, input: u8) {
+fn set_input(interpreter: &mut BLiteInterpreter<'_, i8>, input: i8) {
     interpreter.input.data[0] = input;
 }
 
@@ -20,7 +20,7 @@ fn predict() -> Result<()> {
 
     let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<1, u8>::new();
+    let mut op_resolver = BLiteOpResolver::<1, i8>::new();
     op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
 
     let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
@@ -29,12 +29,9 @@ fn predict() -> Result<()> {
     let (output_scale, output_zero_point) = interpreter.get_output_quantization_params().unwrap();
 
     let delta = 0.05;
-    let golden_inputs_f32_inputs = [
-        (-96, 0.77f32),
-        // (-63, 1.57), (-34, 2.3), (0, 3.14)
-    ];
+    let golden_inputs_f32_inputs = [(-96, 0.77f32), (-63, 1.57), (-34, 2.3), (0, 3.14)];
     for (g_input, g_f32_input) in golden_inputs_f32_inputs {
-        let input = g_input + input_zero_point;
+        let input = g_input;
         println!(
             "[Input]: {} {} {} {}",
             g_input,
@@ -42,11 +39,11 @@ fn predict() -> Result<()> {
             input_zero_point,
             input_scale * (g_input - input_zero_point) as f32
         );
-        set_input(&mut interpreter, input as u8);
+        set_input(&mut interpreter, input as i8);
         interpreter.invoke()?;
         let output = interpreter.output.data[0];
         let y_pred = (output as i32 - output_zero_point) as f32 * output_scale;
-        let g_truth_input = input_scale * ((input as u8) as i32 - input_zero_point) as f32;
+        let g_truth_input = input_scale * ((input as i8) as i32 - input_zero_point) as f32;
         let g_truth_output = g_truth_input.sin();
         println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth input: {g_truth_input:.8} ground truth: {g_truth_output:.8}");
         if (y_pred - g_truth_output).abs() > delta {
