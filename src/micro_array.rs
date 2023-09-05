@@ -39,7 +39,7 @@ pub trait ArrayElem<T: 'static + Clone + Copy> = Debug
     + PartialOrd
     + AsPrimitive<f32>
     // TODO: this type should be removed, because it is not used for the quantized runtime.
-    + AsPrimitive<u8>
+    // + AsPrimitive<u8>
     + AsPrimitive<i8>
     + AsPrimitive<i32>
     + FromPrimitive

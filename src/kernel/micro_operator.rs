@@ -1,5 +1,5 @@
 pub mod f32;
-pub mod u8;
+pub mod i8;
 
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::Result;
@@ -16,10 +16,7 @@ where
     T: ArrayElem<T>,
 {
     registration: BLiteRegistration<T>,
-    parser: fn(
-        op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
-    ) -> Result<BLiteBuiltinOption<T>>,
+    parser: fn(op: Operator, tensors: &mut [BLiteTensor<'_, T>]) -> Result<BLiteBuiltinOption<T>>,
 }
 
 impl<T> BLiteOperator<T>
@@ -36,19 +33,13 @@ where
 
     pub fn get_parser(
         &self,
-    ) -> fn(
-        op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
-    ) -> Result<BLiteBuiltinOption<T>> {
+    ) -> fn(op: Operator, tensors: &mut [BLiteTensor<'_, T>]) -> Result<BLiteBuiltinOption<T>> {
         self.parser
     }
 }
 
 impl<T: ArrayElem<T>> Debug for BLiteOperator<T> {
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "Operator {{ registration: {:?}, parse:...}}",

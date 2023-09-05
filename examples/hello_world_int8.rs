@@ -1,4 +1,4 @@
-use berrylite::kernel::micro_operator::u8::fully_connected_u8::OpFullyConnectedInt8;
+use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
 use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;

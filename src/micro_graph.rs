@@ -162,6 +162,9 @@ where
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
         // size of allocated tensors
+        for t in subgraph.tensors().unwrap().iter() {
+            println!("{:?}", t);
+        }
         let tensors_size = subgraph.tensors().unwrap().len();
 
         // Note that tensors
