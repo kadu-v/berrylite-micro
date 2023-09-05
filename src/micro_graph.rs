@@ -9,10 +9,10 @@ use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
+use crate::micro_tensor::BLiteTensor::*;
 use crate::tflite_schema_generated::tflite::{
-    self, Buffer, Model, Operator, OperatorCode, QuantizationParameters,
+    self, Buffer, Model, Operator, OperatorCode, QuantizationParameters, TensorType,
 };
-
 use core::cell::RefCell;
 use core::fmt::Debug;
 use core::{
@@ -162,12 +162,9 @@ where
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
         // size of allocated tensors
-        for t in subgraph.tensors().unwrap().iter() {
-            println!("{:?}", t);
-        }
         let tensors_size = subgraph.tensors().unwrap().len();
 
-        // Note that tensors
+        // allocate the set of tensors that are used for inputs, outputs, filters, and biases
         let tensors = unsafe {
             match allocator.alloc(
                 size_of::<BLiteTensor<'a, T>>() * tensors_size,
@@ -180,6 +177,7 @@ where
             }
         };
 
+        //
         if let Some(subgraph_tensors) = subgraph.tensors() {
             for (i, tensor) in subgraph_tensors.iter().enumerate() {
                 let quant_params = tensor.quantization();
@@ -187,10 +185,18 @@ where
                 let tensor_idx = tensor.buffer();
                 let buffer = buffers.get(tensor_idx as usize);
                 let dims = tensor.shape().unwrap();
-                let tflite_tensor = unsafe {
-                    BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
-                };
-                tensors[i] = RefCell::new(tflite_tensor);
+                let ttype = tensor.type_();
+                if ttype == TensorType::INT32 {
+                    let tflite_tensor = unsafe {
+                        BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
+                    };
+                    tensors[i] = I32Tensor(RefCell::new(tflite_tensor));
+                } else {
+                    let tflite_tensor = unsafe {
+                        BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
+                    };
+                    tensors[i] = BTensor(RefCell::new(tflite_tensor));
+                }
             }
             Ok(tensors)
         } else {

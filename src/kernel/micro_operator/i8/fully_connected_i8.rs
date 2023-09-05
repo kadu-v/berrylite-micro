@@ -47,8 +47,8 @@ impl OpFullyConnectedInt8 {
         let (input_scale, input_zero_point) = {
             let Some(BLiteQuantizationParams {
                scale, zero_point
-            }) = tensors[input_idx].borrow().quant_params else {
-                return Err(BLiteError::FailedToAllocateMemory);
+            }) = tensors[input_idx]._b_tensor()?.borrow().quant_params else {
+                return Err(BLiteError::NotFoundQuantParams);
             };
             (scale, zero_point)
         };
@@ -57,8 +57,8 @@ impl OpFullyConnectedInt8 {
         let (filter_scale, filter_zero_point) = {
             let Some(BLiteQuantizationParams {
                scale, zero_point
-            }) = tensors[filter_idx].borrow().quant_params else {
-                return Err(BLiteError::FailedToAllocateMemory);
+            }) = tensors[filter_idx]._b_tensor()?.borrow().quant_params else {
+                return Err(BLiteError::NotFoundQuantParams);
             };
             (scale, zero_point)
         };
@@ -67,8 +67,8 @@ impl OpFullyConnectedInt8 {
         let bias_scale = if bias_idx >= 0 {
             let Some(BLiteQuantizationParams {
                 scale, ..
-             }) = tensors[bias_idx as usize].borrow().quant_params else {
-                 return Err(BLiteError::FailedToAllocateMemory);
+             }) = tensors[bias_idx as usize]._i32_tensor()?.borrow().quant_params else {
+                 return Err(BLiteError::NotFoundQuantParams);
              };
             Some(scale)
         } else {
@@ -79,8 +79,8 @@ impl OpFullyConnectedInt8 {
         let (output_scale, output_zero_point) = {
             let Some(BLiteQuantizationParams {
                scale, zero_point
-            }) = tensors[output_idx].borrow().quant_params else {
-                return Err(BLiteError::FailedToAllocateMemory);
+            }) = tensors[output_idx]._b_tensor()?.borrow().quant_params else {
+                return Err(BLiteError::NotFoundQuantParams);
             };
             (scale, zero_point)
         };
@@ -128,13 +128,13 @@ impl OpFullyConnectedInt8 {
         };
 
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input].borrow();
+        let input = tensors[idx_input]._b_tensor()?.borrow();
 
         let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter].borrow();
+        let filter = tensors[idx_filter]._b_tensor()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output].borrow_mut();
+        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
 
         let idx_bias = node.inputs[2];
 
@@ -143,7 +143,7 @@ impl OpFullyConnectedInt8 {
         let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
 
         if idx_bias >= 0 {
-            let bias = tensors[idx_bias as usize].borrow();
+            let bias = tensors[idx_bias as usize]._i32_tensor()?.borrow();
 
             Self::kernel(
                 input.data,
@@ -182,7 +182,7 @@ impl OpFullyConnectedInt8 {
     fn kernel<'a, T: ArrayElem<T>>(
         input_data: &[T],
         filter_data: &[T],
-        bias_data: Option<&[T]>,
+        bias_data: Option<&[i32]>,
         output_data: &mut [T],
         input_offset: i32,
         filter_offset: i32,
@@ -206,7 +206,7 @@ impl OpFullyConnectedInt8 {
                 }
 
                 if let Some(bias_data) = bias_data {
-                    total += AsPrimitive::<i8>::as_(bias_data[out_d]) as i32;
+                    total += AsPrimitive::<i32>::as_(bias_data[out_d]) as i32;
                 }
 
                 total = multiply_by_quantized_multiplier(total, output_multiplier, output_shift)?;

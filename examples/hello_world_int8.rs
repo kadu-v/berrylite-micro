@@ -1,10 +1,9 @@
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
-use berrylite::micro_erros::Result;
+use berrylite::micro_erros::{BLiteError, Result};
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
-use core::f32::consts::PI;
 
 const BUFFER: &[u8; 2704] = include_bytes!("../models/hello_world_int8.tflite");
 
@@ -32,29 +31,25 @@ fn predict() -> Result<()> {
     let golden_inputs_f32_inputs = [(-96, 0.77f32), (-63, 1.57), (-34, 2.3), (0, 3.14)];
     for (g_input, g_f32_input) in golden_inputs_f32_inputs {
         let input = g_input;
-        println!(
-            "[Input]: {} {} {} {}",
-            g_input,
-            input_scale,
-            input_zero_point,
-            input_scale * (g_input - input_zero_point) as f32
-        );
+
         set_input(&mut interpreter, input as i8);
         interpreter.invoke()?;
         let output = interpreter.output.data[0];
         let y_pred = (output as i32 - output_zero_point) as f32 * output_scale;
         let g_truth_input = input_scale * ((input as i8) as i32 - input_zero_point) as f32;
-        let g_truth_output = g_truth_input.sin();
+        let g_truth_output = g_f32_input.sin();
         println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth input: {g_truth_input:.8} ground truth: {g_truth_output:.8}");
         if (y_pred - g_truth_output).abs() > delta {
             println!("Error!: abs :{}", (y_pred - g_truth_output).abs());
+            return Err(BLiteError::FatalError);
         }
     }
 
     Ok(())
 }
 
-fn main() {
-    predict();
+fn main() -> Result<()> {
+    predict()?;
     println!("Inference Success!!");
+    Ok(())
 }

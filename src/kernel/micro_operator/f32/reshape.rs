@@ -1,6 +1,4 @@
-use crate::kernel::micro_builtin_options::{
-    BLiteBuiltinOption, BLiteBuiltinOption::*,
-};
+use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::InCompatibleShape;
@@ -33,13 +31,8 @@ impl Reshape {
         Ok(BLiteBuiltinOption::ReshapeOptions {})
     }
 
-    pub fn registration<T: ArrayElem<T>>(
-    ) -> BLiteRegistration<T> {
-        BLiteRegistration::new(
-            Self::OPCODE,
-            Self::eval::<T>,
-            NotInitialize,
-        )
+    pub fn registration<T: ArrayElem<T>>() -> BLiteRegistration<T> {
+        BLiteRegistration::new(Self::OPCODE, Self::eval::<T>, NotInitialize)
     }
 
     pub fn eval<'a, T: ArrayElem<T>>(
@@ -49,26 +42,20 @@ impl Reshape {
         _builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input].borrow();
+        let input = tensors[idx_input]._b_tensor()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output].borrow_mut();
+        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
 
         // shape checking
-        let input_elems =
-            input.dims.iter().fold(1, |x, acc| x * acc);
-        let output_elems =
-            output.dims.iter().fold(1, |x, acc| x * acc);
+        let input_elems = input.dims.iter().fold(1, |x, acc| x * acc);
+        let output_elems = output.dims.iter().fold(1, |x, acc| x * acc);
         if input_elems != output_elems {
-            return Err(InCompatibleShape(
-                input_elems,
-                output_elems,
-            ));
+            return Err(InCompatibleShape(input_elems, output_elems));
         }
 
         for i in 0..input_elems {
-            output.data[i as usize] =
-                input.data[i as usize];
+            output.data[i as usize] = input.data[i as usize];
         }
         Ok(())
     }

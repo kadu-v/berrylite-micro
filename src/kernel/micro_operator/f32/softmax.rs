@@ -1,8 +1,6 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel::micro_builtin_options::{
-    BLiteBuiltinOption, BLiteBuiltinOption::*,
-};
+use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::NotFoundOption;
@@ -33,8 +31,7 @@ impl SoftMax {
         op: Operator,
         _tensors: &mut [BLiteTensor<'_, T>],
     ) -> Result<BLiteBuiltinOption<T>> {
-        let builtin_option =
-            op.builtin_options_as_softmax_options();
+        let builtin_option = op.builtin_options_as_softmax_options();
         let mut beta = 1.0;
         if let Some(builtin_option) = builtin_option {
             beta = builtin_option.beta();
@@ -42,13 +39,8 @@ impl SoftMax {
         Ok(BLiteBuiltinOption::SoftMaxOptions { beta })
     }
 
-    pub fn registration<T: ArrayElem<T>>(
-    ) -> BLiteRegistration<T> {
-        BLiteRegistration::new(
-            Self::OPCODE,
-            Self::eval::<T>,
-            NotInitialize,
-        )
+    pub fn registration<T: ArrayElem<T>>() -> BLiteRegistration<T> {
+        BLiteRegistration::new(Self::OPCODE, Self::eval::<T>, NotInitialize)
     }
 
     pub fn eval<'a, T: ArrayElem<T>>(
@@ -58,15 +50,13 @@ impl SoftMax {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input].borrow();
+        let input = tensors[idx_input]._b_tensor()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output].borrow_mut();
+        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
 
-        let trailing_dims =
-            &input.dims[0..input.dims.len() - 1];
-        let outer_size =
-            trailing_dims.iter().fold(1, |x, &acc| x * acc);
+        let trailing_dims = &input.dims[0..input.dims.len() - 1];
+        let outer_size = trailing_dims.iter().fold(1, |x, &acc| x * acc);
         let depth = input.dims[input.dims.len() - 1];
         let SoftMaxOptions { beta } = builtin_option else {
             return Err(NotFoundOption);
@@ -75,8 +65,7 @@ impl SoftMax {
         for i in 0..outer_size {
             let mut max = Default::default();
             for c in 0..depth {
-                let input_v =
-                    input.data[(i * depth + c) as usize];
+                let input_v = input.data[(i * depth + c) as usize];
                 if input_v > max {
                     max = input_v;
                 }

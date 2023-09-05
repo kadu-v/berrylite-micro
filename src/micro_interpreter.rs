@@ -35,7 +35,7 @@ where
         );
         let input_index = subgraph.inputs().unwrap().get(0) as usize;
         let input = unsafe {
-            &mut *(graph.subgraphs[0].borrow().tensors[input_index].as_ptr()
+            &mut *((graph.subgraphs[0].borrow().tensors[input_index]._b_tensor()?).as_ptr()
                 as *mut BLiteArray<'a, T>)
         };
 
@@ -47,7 +47,7 @@ where
         );
         let output_index = subgraph.outputs().unwrap().get(0) as usize;
         let output = unsafe {
-            &*(graph.subgraphs[0].borrow().tensors[output_index].as_ptr()
+            &*((graph.subgraphs[0].borrow().tensors[output_index]._b_tensor()?).as_ptr()
                 as *const BLiteArray<'a, T>)
         };
 

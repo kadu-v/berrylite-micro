@@ -8,6 +8,10 @@ pub enum BLiteError {
     // micro array errors
     NotMatchSize,
 
+    // micro tensors
+    NotBTensor,
+    NotI32Tensor,
+
     // micro graph errors
     FailedToCreateGraph,
     NotFoundTensor,
@@ -34,7 +38,11 @@ pub enum BLiteError {
     // micro fully connected int8
     NotMatchScale(f64),
 
+    // micro quantized fully connected int8
+    NotFoundQuantParams,
+
     // micro reshape
     InCompatibleShape(i32, i32),
     //
+    FatalError,
 }
