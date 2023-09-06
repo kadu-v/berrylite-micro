@@ -33,7 +33,7 @@ fn predict() -> Result<()> {
 
     let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<1, i8>::new();
+    let mut op_resolver = BLiteOpResolver::<1, i8, _>::new();
     op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
 
     let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;

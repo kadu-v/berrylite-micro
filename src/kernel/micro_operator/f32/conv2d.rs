@@ -1,7 +1,8 @@
-use super::padding::compute_padding_height_width;
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::BLiteBuiltinOption::Conv2DOptions;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::utils::padding::compute_padding_height_width;
+use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::*;
@@ -15,22 +16,23 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Conv2D {}
+pub struct OpConv2D {}
 
-impl Conv2D {
+impl OpConv2D {
     const OPCODE: i32 = 3;
 
-    pub fn conv2d<T: ArrayElem<T>>() -> BLiteOperator<T> {
+    pub fn conv2d<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
         }
     }
 
-    pub fn parser<T: ArrayElem<T>>(
+    pub fn parser<'a, T: ArrayElem<T>>(
+        allocator: &mut impl ArenaAllocator,
         op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
-    ) -> Result<BLiteBuiltinOption<T>> {
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<BLiteBuiltinOption<'a, T>> {
         let builtin_option = op.builtin_options_as_conv_2_doptions();
         let Some(builtin_option) = builtin_option else {
             return Err(NotFoundOption);
@@ -84,12 +86,12 @@ impl Conv2D {
         })
     }
 
-    pub fn registration<T: ArrayElem<T>>() -> BLiteRegistration<T> {
+    pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {
         BLiteRegistration::new(Self::OPCODE, Self::eval::<T>, NotInitialize)
     }
 
     pub fn eval<'a, T: ArrayElem<T>>(
-        _context: &BLiteContext<'a, T>,
+        _context: &BLiteContext,
         tensors: &'a mut [BLiteTensor<'a, T>],
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
@@ -205,6 +207,7 @@ impl Conv2D {
         Ok(())
     }
 
+    #[inline(always)]
     fn offset(h: i32, w: i32, d: i32, i0: i32, i1: i32, i2: i32, i3: i32) -> i32 {
         ((i0 * h + i1) * w + i2) * d + i3
     }

@@ -1,7 +1,3 @@
-use core::num;
-
-use num_traits::real;
-
 use crate::micro_erros::BLiteError::{self, NotMatchScale};
 use crate::micro_erros::Result;
 
@@ -12,7 +8,7 @@ use crate::micro_erros::Result;
 /// This function calculates a multiplier following the equation:
 /// M = S_1 * S_2 / S_3 (= input_scale * filter_scale / output_scale)
 /// see this paper: https://arxiv.org/abs/1712.05877
-pub fn get_quantized_convolutional_multiplier(
+pub fn get_quantized_convolution_multiplier(
     input_scale: f32,
     filter_scale: f32,
     output_scale: f32,
@@ -64,7 +60,6 @@ pub fn quantize_multiplier(real_multiplier: f64) -> Result<(i32, i32)> {
         shift = 30;
         q_fixed = (1 << 31) - 1;
     }
-
     let quantized_multiplier = q_fixed as i32;
     Ok((quantized_multiplier, shift))
 }
@@ -92,6 +87,7 @@ pub fn multiply_by_quantized_multiplier(
 
 #[cfg(test)]
 mod tests {
+
     #[test]
     fn test_get_quantized_convolutional_multiplier() {
         assert_eq!(1, 1)

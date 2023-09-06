@@ -1,7 +1,6 @@
 use berrylite::kernel::micro_operator::f32::{
-    conv2d::Conv2D, fully_connected::OpFullyConnected,
-    max_pool2d::MaxPool2D, reshape::Reshape,
-    softmax::SoftMax,
+    conv2d::OpConv2D, fully_connected::OpFullyConnected, max_pool2d::OpMaxPool2D,
+    reshape::OpReshape, softmax::OpSoftMax,
 };
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::Result;
@@ -9,22 +8,15 @@ use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
-const BUFFER: &[u8; 376740] = include_bytes!(
-    "../models/mnist_cnn_without_bias.tflite"
-);
+const BUFFER: &[u8; 376740] = include_bytes!("../models/mnist_cnn_without_bias.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
-fn set_input(
-    interpreter: &mut BLiteInterpreter<'_, f32>,
-    input_h: usize,
-    input_w: usize,
-) {
+fn set_input(interpreter: &mut BLiteInterpreter<'_, f32>, input_h: usize, input_w: usize) {
     for h in 0..input_h {
         for w in 0..input_w {
-            interpreter.input.data[h * input_w + w] =
-                IMAGE[h * input_w + w];
+            interpreter.input.data[h * input_w + w] = IMAGE[h * input_w + w];
         }
     }
 }
@@ -32,22 +24,16 @@ fn set_input(
 fn predict() -> Result<usize> {
     let model = tflite::root_as_model(BUFFER).unwrap();
 
-    let mut allocator =
-        unsafe { BumpArenaAllocator::new(&mut ARENA) };
+    let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<5, f32>::new();
-    op_resolver
-        .add_op(OpFullyConnected::fully_connected())?;
-    op_resolver.add_op(Reshape::reshape())?;
-    op_resolver.add_op(Conv2D::conv2d())?;
-    op_resolver.add_op(MaxPool2D::max_pool2d())?;
-    op_resolver.add_op(SoftMax::softmax())?;
+    let mut op_resolver = BLiteOpResolver::<5, f32, _>::new();
+    op_resolver.add_op(OpFullyConnected::fully_connected())?;
+    op_resolver.add_op(OpReshape::reshape())?;
+    op_resolver.add_op(OpConv2D::conv2d())?;
+    op_resolver.add_op(OpMaxPool2D::max_pool2d())?;
+    op_resolver.add_op(OpSoftMax::softmax())?;
 
-    let mut interpreter = BLiteInterpreter::new(
-        &mut allocator,
-        &op_resolver,
-        &model,
-    )?;
+    let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
 
     set_input(&mut interpreter, 28, 28);
     interpreter.invoke()?;

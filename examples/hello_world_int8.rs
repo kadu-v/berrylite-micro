@@ -19,7 +19,7 @@ fn predict() -> Result<()> {
 
     let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<1, i8>::new();
+    let mut op_resolver = BLiteOpResolver::<1, i8, _>::new();
     op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
 
     let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
@@ -30,15 +30,14 @@ fn predict() -> Result<()> {
     let delta = 0.05;
     let golden_inputs_f32_inputs = [(-96, 0.77f32), (-63, 1.57), (-34, 2.3), (0, 3.14)];
     for (g_input, g_f32_input) in golden_inputs_f32_inputs {
-        let input = g_input;
-
-        set_input(&mut interpreter, input as i8);
+        set_input(&mut interpreter, g_input);
         interpreter.invoke()?;
+
         let output = interpreter.output.data[0];
         let y_pred = (output as i32 - output_zero_point) as f32 * output_scale;
-        let g_truth_input = input_scale * ((input as i8) as i32 - input_zero_point) as f32;
+        let g_truth_input = input_scale * (g_input as i32 - input_zero_point) as f32;
         let g_truth_output = g_f32_input.sin();
-        println!("input: {input:.8}, y_pred: {y_pred:.8}, ground truth input: {g_truth_input:.8} ground truth: {g_truth_output:.8}");
+        println!("input: {g_input:.8}, y_pred: {y_pred:.8}, ground truth input: {g_truth_input:.8} ground truth: {g_truth_output:.8}");
         if (y_pred - g_truth_output).abs() > delta {
             println!("Error!: abs :{}", (y_pred - g_truth_output).abs());
             return Err(BLiteError::FatalError);

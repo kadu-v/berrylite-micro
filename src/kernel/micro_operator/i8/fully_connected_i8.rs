@@ -1,11 +1,11 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel;
-use crate::kernel::kernel_utils::{
-    get_quantized_convolutional_multiplier, multiply_by_quantized_multiplier, quantize_multiplier,
-};
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::utils::quantization_multiplier::{
+    get_quantized_convolution_multiplier, multiply_by_quantized_multiplier, quantize_multiplier,
+};
+use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::{self, *};
@@ -16,7 +16,6 @@ use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::cmp::{max, min};
 use core::fmt::Debug;
-use std::borrow::BorrowMut;
 
 use crate::kernel::micro_operator::BLiteOperator;
 
@@ -26,17 +25,19 @@ pub struct OpFullyConnectedInt8 {}
 impl OpFullyConnectedInt8 {
     const OPCODE: i32 = 9;
 
-    pub fn fully_connected_int8<T: ArrayElem<T>>() -> BLiteOperator<T> {
+    pub fn fully_connected_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S>
+    {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
         }
     }
 
-    pub fn parser<T: ArrayElem<T>>(
+    pub fn parser<'a, T: ArrayElem<T>>(
+        allocator: &mut impl ArenaAllocator,
         op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
-    ) -> Result<BLiteBuiltinOption<T>> {
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<BLiteBuiltinOption<'a, T>> {
         let builtin_option = op.builtin_options_as_fully_connected_options();
         let mut op_code = -1;
         if let Some(builtin_option) = builtin_option {
@@ -50,7 +51,7 @@ impl OpFullyConnectedInt8 {
             }) = tensors[input_idx]._b_tensor()?.borrow().quant_params else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
-            (scale, zero_point)
+            (scale[0], zero_point[0] as i32)
         };
 
         let filter_idx = op.inputs().unwrap().get(1) as usize;
@@ -60,7 +61,7 @@ impl OpFullyConnectedInt8 {
             }) = tensors[filter_idx]._b_tensor()?.borrow().quant_params else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
-            (scale, zero_point)
+            (scale[0], zero_point[0] as i32)
         };
 
         let bias_idx = op.inputs().unwrap().get(2);
@@ -70,7 +71,7 @@ impl OpFullyConnectedInt8 {
              }) = tensors[bias_idx as usize]._i32_tensor()?.borrow().quant_params else {
                  return Err(BLiteError::NotFoundQuantParams);
              };
-            Some(scale)
+            Some(scale[0])
         } else {
             None
         };
@@ -82,10 +83,11 @@ impl OpFullyConnectedInt8 {
             }) = tensors[output_idx]._b_tensor()?.borrow().quant_params else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
-            (scale, zero_point)
+            (scale[0], zero_point[0] as i32)
         };
 
-        let real_multiplier = get_quantized_convolutional_multiplier(
+        //This computations is corresponded to CalculateOpDataFullyConnected
+        let real_multiplier = get_quantized_convolution_multiplier(
             input_scale,
             filter_scale,
             output_scale,
@@ -105,12 +107,12 @@ impl OpFullyConnectedInt8 {
         })
     }
 
-    pub fn registration<T: ArrayElem<T>>() -> BLiteRegistration<T> {
+    pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {
         BLiteRegistration::new(Self::OPCODE, Self::eval::<T>, NotInitialize)
     }
 
     pub fn eval<'a, T: ArrayElem<T>>(
-        _context: &BLiteContext<'a, T>,
+        _context: &BLiteContext,
         tensors: &'a mut [BLiteTensor<'a, T>],
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
@@ -179,17 +181,20 @@ impl OpFullyConnectedInt8 {
         }
     }
 
+    #[inline(always)]
     fn kernel<'a, T: ArrayElem<T>>(
         input_data: &[T],
         filter_data: &[T],
         bias_data: Option<&[i32]>,
         output_data: &mut [T],
+        // for quantization
         input_offset: i32,
         filter_offset: i32,
         output_offset: i32,
         output_depth: usize,
         output_multiplier: i32,
         output_shift: i32,
+        //
         accum_depth: usize,
         batches: usize,
         activation: Option<fn(i32) -> i32>,
@@ -206,7 +211,7 @@ impl OpFullyConnectedInt8 {
                 }
 
                 if let Some(bias_data) = bias_data {
-                    total += AsPrimitive::<i32>::as_(bias_data[out_d]) as i32;
+                    total += bias_data[out_d];
                 }
 
                 total = multiply_by_quantized_multiplier(total, output_multiplier, output_shift)?;

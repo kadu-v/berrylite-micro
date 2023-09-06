@@ -19,9 +19,9 @@ impl<'a, T> BLiteInterpreter<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
-    pub fn new<const N: usize>(
-        allocator: &mut impl ArenaAllocator,
-        op_resolver: &BLiteOpResolver<N, T>,
+    pub fn new<const N: usize, S: ArenaAllocator>(
+        allocator: &mut S,
+        op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
         model: &'a Model<'a>,
     ) -> Result<Self> {
         let graph = BLiteGraph::allocate_graph(allocator, op_resolver, model)?;
@@ -71,10 +71,14 @@ where
     }
 
     pub fn get_input_quantization_params(&self) -> Option<(f32, i32)> {
-        self.input.get_quantization_scale_and_zero_point()
+        self.input
+            .get_quantization_scale_and_zero_point()
+            .map(|(scale, zero_point)| (scale[0], zero_point[0] as i32))
     }
 
     pub fn get_output_quantization_params(&self) -> Option<(f32, i32)> {
-        self.output.get_quantization_scale_and_zero_point()
+        self.output
+            .get_quantization_scale_and_zero_point()
+            .map(|(scale, zero_point)| (scale[0], zero_point[0] as i32))
     }
 }

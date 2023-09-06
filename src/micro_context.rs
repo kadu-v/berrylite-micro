@@ -1,21 +1,13 @@
 use core::fmt::Debug;
 use std::marker::PhantomData;
 
-#[derive(Debug)]
-pub struct BLiteContext<'a, T>
-where
-    T: Debug + Clone + Copy,
-{
-    _x: PhantomData<&'a T>,
-}
+use crate::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
 
-impl<'a, T> BLiteContext<'a, T>
-where
-    T: Debug + Clone + Copy,
-{
+#[derive(Debug)]
+pub struct BLiteContext {}
+
+impl BLiteContext {
     pub fn new() -> Self {
-        Self {
-            _x: Default::default(),
-        }
+        Self {}
     }
 }

@@ -13,12 +13,12 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
-pub struct OpReshape {}
+pub struct OpReshapeInt8 {}
 
-impl OpReshape {
+impl OpReshapeInt8 {
     const OPCODE: i32 = 22;
 
-    pub fn reshape<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
+    pub fn reshape_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
@@ -30,7 +30,7 @@ impl OpReshape {
         _op: Operator,
         _tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<BLiteBuiltinOption<'a, T>> {
-        Ok(BLiteBuiltinOption::ReshapeOptions {})
+        Ok(BLiteBuiltinOption::QuantizedReshapeOptions {})
     }
 
     pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {

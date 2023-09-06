@@ -12,13 +12,13 @@ use core::slice::from_raw_parts_mut;
 
 /*-----------------------------------------------------------------------------*/
 #[derive(Debug, Clone, Copy)]
-pub struct BLiteQuantizationParams {
-    pub scale: f32,
-    pub zero_point: i32,
+pub struct BLiteQuantizationParams<'a> {
+    pub scale: &'a [f32],
+    pub zero_point: &'a [i64],
 }
 
-impl BLiteQuantizationParams {
-    pub const fn new(scale: f32, zero_point: i32) -> Self {
+impl<'a> BLiteQuantizationParams<'a> {
+    pub const fn new(scale: &'a [f32], zero_point: &'a [i64]) -> Self {
         Self { scale, zero_point }
     }
 }
@@ -52,7 +52,7 @@ where
 {
     pub data: &'a mut [T],
     pub dims: &'a [i32],
-    pub quant_params: Option<BLiteQuantizationParams>,
+    pub quant_params: Option<BLiteQuantizationParams<'a>>,
 }
 
 impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
@@ -61,7 +61,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         allocator: &mut impl ArenaAllocator,
         data_size: usize,
         dims: &[i32],
-        quant_params: Option<BLiteQuantizationParams>,
+        quant_params: Option<BLiteQuantizationParams<'a>>,
     ) -> Result<Self> {
         // TODO: should use check_mul
         let tot_size = dims.iter().fold(1, |x, &acc| x * acc);
@@ -93,7 +93,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         allocator: &mut impl ArenaAllocator,
         buffer: Buffer<'a>,
         shape: Vector<'a, i32>,
-        quant_params: Option<BLiteQuantizationParams>,
+        quant_params: Option<BLiteQuantizationParams<'a>>,
     ) -> Result<Self> {
         if let Some(buffer_data) = buffer.data() {
             let data = from_tflite_vector_mut(&buffer_data);
@@ -115,7 +115,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         self.data.len()
     }
 
-    pub fn get_quantization_scale_and_zero_point(&self) -> Option<(f32, i32)> {
+    pub fn get_quantization_scale_and_zero_point(&self) -> Option<(&'a [f32], &'a [i64])> {
         self.quant_params
             .map(|quant_params| (quant_params.scale, quant_params.zero_point))
     }

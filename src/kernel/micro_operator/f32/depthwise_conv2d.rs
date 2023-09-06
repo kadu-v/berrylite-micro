@@ -1,6 +1,7 @@
-use super::padding::compute_padding_height_width;
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::utils::padding::compute_padding_height_width;
+use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
 use crate::micro_erros::BLiteError::*;
@@ -14,22 +15,23 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
-pub struct DepthWiseConv2D {}
+pub struct OpDepthWiseConv2D {}
 
-impl DepthWiseConv2D {
+impl OpDepthWiseConv2D {
     const OPCODE: i32 = 4;
 
-    pub fn depthwise_conv2d<T: ArrayElem<T>>() -> BLiteOperator<T> {
+    pub fn depthwise_conv2d<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
         }
     }
 
-    pub fn parser<T: ArrayElem<T>>(
+    pub fn parser<'a, T: ArrayElem<T>>(
+        allocator: &mut impl ArenaAllocator,
         op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
-    ) -> Result<BLiteBuiltinOption<T>> {
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<BLiteBuiltinOption<'a, T>> {
         let builtin_option = op.builtin_options_as_depthwise_conv_2_doptions();
         let Some(builtin_option) = builtin_option else {
             return Err(NotFoundOption);
@@ -86,12 +88,12 @@ impl DepthWiseConv2D {
         })
     }
 
-    pub fn registration<T: ArrayElem<T>>() -> BLiteRegistration<T> {
+    pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {
         BLiteRegistration::new(Self::OPCODE, Self::eval::<T>, NotInitialize)
     }
 
     pub fn eval<'a, T: ArrayElem<T>>(
-        _context: &BLiteContext<'a, T>,
+        _context: &BLiteContext,
         tensors: &'a mut [BLiteTensor<'a, T>],
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,

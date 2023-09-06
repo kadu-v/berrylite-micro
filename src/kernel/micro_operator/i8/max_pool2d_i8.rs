@@ -1,9 +1,9 @@
-use num_traits::FromPrimitive;
+use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption,
-    BLiteBuiltinOption::{MaxPool2DOptions, NotInitialize},
+    BLiteBuiltinOption::{NotInitialize, QuantizedMaxPool2DOptions},
 };
 use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::micro_allocator::ArenaAllocator;
@@ -20,12 +20,12 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
-pub struct OpMaxPool2D {}
+pub struct OpMaxPool2DInt8 {}
 
-impl OpMaxPool2D {
+impl OpMaxPool2DInt8 {
     const OPCODE: i32 = 17;
 
-    pub fn max_pool2d<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
+    pub fn max_pool2d_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
@@ -35,14 +35,14 @@ impl OpMaxPool2D {
     pub fn parser<'a, T: ArrayElem<T>>(
         allocator: &mut impl ArenaAllocator,
         op: Operator,
-        tensors: &mut [BLiteTensor<'_, T>],
+        tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<BLiteBuiltinOption<'a, T>> {
         let builtin_option = op.builtin_options_as_pool_2_doptions();
         let Some(builtin_option) = builtin_option else {
             return Err(NotFoundOption);
         };
         let op_code = builtin_option.fused_activation_function().0 as i32;
-        let activation = get_activation::<T>(op_code);
+        let activation = get_activation::<i32>(op_code);
         let padding = builtin_option.padding().0 as usize;
         let stride_w = builtin_option.stride_w();
         let stride_h = builtin_option.stride_h();
@@ -63,7 +63,7 @@ impl OpMaxPool2D {
                 /*dilation_w_factor */ 1, input_h, input_w, filter_h, filter_w, output_h,
                 output_w,
             );
-        Ok(BLiteBuiltinOption::MaxPool2DOptions {
+        Ok(BLiteBuiltinOption::QuantizedMaxPool2DOptions {
             op_code,
             activation,
             padding,
@@ -100,8 +100,8 @@ impl OpMaxPool2D {
         let output_width = output.dims[2];
         let output_depth = output.dims[3];
 
-        let batchs = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
-        let MaxPool2DOptions {
+        let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
+        let QuantizedMaxPool2DOptions {
             op_code: _,
             activation,
             padding: _,
@@ -117,8 +117,48 @@ impl OpMaxPool2D {
         else {
             return Err(NotCompatibleOption);
         };
+        Self::kernel(
+            input.data,
+            output.data,
+            input_height,
+            input_width,
+            input_depth,
+            output_height,
+            output_width,
+            output_depth,
+            stride_w,
+            stride_h,
+            filter_w,
+            filter_h,
+            padding_w,
+            padding_h,
+            batches as usize,
+            activation,
+        )
+    }
 
-        for batch in 0..batchs {
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        output_data: &mut [T],
+        //
+        input_height: i32,
+        input_width: i32,
+        input_depth: i32,
+        output_height: i32,
+        output_width: i32,
+        output_depth: i32,
+        //
+        stride_w: i32,
+        stride_h: i32,
+        filter_w: i32,
+        filter_h: i32,
+        padding_w: i32,
+        padding_h: i32,
+        //
+        batches: usize,
+        _activation: Option<fn(i32) -> i32>,
+    ) -> Result<()> {
+        for batch in 0..batches {
             for out_y in 0..output_height {
                 for out_x in 0..output_width {
                     for channel in 0..output_depth {
@@ -128,7 +168,7 @@ impl OpMaxPool2D {
                         let filter_x_end = core::cmp::min(filter_w, input_width - in_x_origin);
                         let filter_y_start = core::cmp::max(0, -in_y_origin);
                         let filter_y_end = core::cmp::min(filter_h, input_height - in_y_origin);
-                        let mut max = FromPrimitive::from_f32(core::f32::MIN).unwrap();
+                        let mut max = FromPrimitive::from_i8(core::i8::MIN).unwrap();
                         for filter_y in filter_y_start..filter_y_end {
                             for filter_x in filter_x_start..filter_x_end {
                                 let in_y = in_y_origin + filter_y;
@@ -137,31 +177,38 @@ impl OpMaxPool2D {
                                     input_height,
                                     input_width,
                                     input_depth,
-                                    batch,
+                                    batch as i32,
                                     in_y,
                                     in_x,
                                     channel,
                                 );
-                                let input_v = input.data[input_v_idx as usize];
+                                let input_v = input_data[input_v_idx as usize];
                                 if input_v > max {
                                     max = input_v;
                                 }
                             }
                         }
+
+                        let mut max = AsPrimitive::<i8>::as_(max) as i32;
+                        max = core::cmp::max(max, core::i8::MIN as i32);
+                        max = core::cmp::min(max, core::i8::MAX as i32);
+
                         let output_v_idx = Self::offset(
                             output_height,
                             output_width,
                             output_depth,
-                            batch,
+                            batch as i32,
                             out_y,
                             out_x,
                             channel,
                         );
-                        if let Some(activation) = activation {
-                            output.data[output_v_idx as usize] = activation(max);
-                        } else {
-                            output.data[output_v_idx as usize] = max;
-                        }
+                        output_data[output_v_idx as usize] =
+                            FromPrimitive::from_i8(max as i8).unwrap();
+                        // if let Some(activation) = activation {
+                        //     output_data[output_v_idx as usize] = activation(max);
+                        // } else {
+                        //     output_data[output_v_idx as usize] = max;
+                        // }
                     }
                 }
             }
