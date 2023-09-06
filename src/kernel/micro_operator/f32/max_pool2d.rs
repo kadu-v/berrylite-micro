@@ -33,7 +33,7 @@ impl OpMaxPool2D {
     }
 
     pub fn parser<'a, T: ArrayElem<T>>(
-        allocator: &mut impl ArenaAllocator,
+        _allocator: &mut impl ArenaAllocator,
         op: Operator,
         tensors: &mut [BLiteTensor<'_, T>],
     ) -> Result<BLiteBuiltinOption<'a, T>> {

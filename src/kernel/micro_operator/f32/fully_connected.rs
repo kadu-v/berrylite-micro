@@ -27,7 +27,7 @@ impl OpFullyConnected {
     }
 
     pub fn parser<'a, T: ArrayElem<T>>(
-        allocator: &mut impl ArenaAllocator,
+        _allocator: &mut impl ArenaAllocator,
         op: Operator,
         _tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<BLiteBuiltinOption<'a, T>> {

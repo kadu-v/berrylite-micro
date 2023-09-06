@@ -1,5 +1,5 @@
 use flatbuffers::Vector;
-use num_traits::{AsPrimitive, FromPrimitive, NumCast};
+use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::{BLiteError::*, Result};

@@ -1,5 +1,5 @@
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
-use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
+use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_erros::{BLiteError, Result};
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;

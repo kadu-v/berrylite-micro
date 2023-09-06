@@ -1,8 +1,5 @@
+use crate::micro_array::{ArrayElem, BLiteArray};
 use crate::micro_erros::{BLiteError, Result};
-use crate::{
-    micro_array::{ArrayElem, BLiteArray},
-    tflite_schema_generated::tflite::Tensor,
-};
 use core::cell::RefCell;
 
 // pub type BLiteTensor<'a, T> = RefCell<BLiteArray<'a, T>>;

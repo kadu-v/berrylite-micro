@@ -1,12 +1,10 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel;
 use crate::kernel::micro_activation::get_activation;
-use crate::kernel::micro_builtin_options::BLiteBuiltinOption::Conv2DOptions;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::kernel::utils::quantization_multiplier::{
-    get_quantized_convolution_multiplier, multiply_by_quantized_multiplier, quantize_multiplier,
+    multiply_by_quantized_multiplier, quantize_multiplier,
 };
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
@@ -75,18 +73,6 @@ impl OpConv2DInt8 {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale, zero_point[0] as i32)
-        };
-
-        let bias_idx = op.inputs().unwrap().get(2);
-        let bias_scale = if bias_idx >= 0 {
-            let Some(BLiteQuantizationParams {
-                scale, ..
-             }) = tensors[bias_idx as usize]._i32_tensor()?.borrow().quant_params else {
-                 return Err(BLiteError::NotFoundQuantParams);
-             };
-            Some(scale)
-        } else {
-            None
         };
 
         let output_idx = op.outputs().unwrap().get(0) as usize;
@@ -281,7 +267,7 @@ impl OpConv2DInt8 {
         filters_per_group: i32,
         // for quantization
         input_offset: i32,
-        filter_offset: i32,
+        _filter_offset: i32,
         output_offset: i32,
         per_channel_multiplier: &[i32],
         per_channel_shift: &[i32],

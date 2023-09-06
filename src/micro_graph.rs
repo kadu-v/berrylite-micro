@@ -282,7 +282,6 @@ where
         let blite_op = op_resolver.find_op(&builtin_code)?;
         let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
-        let context = BLiteContext::new();
         let builtin_option = parser(allocator, *op, tensors).unwrap();
 
         registration.builtin_option = builtin_option;

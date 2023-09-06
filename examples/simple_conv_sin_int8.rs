@@ -1,9 +1,5 @@
-use berrylite::kernel::micro_operator::f32::{
-    conv2d::OpConv2D, fully_connected::OpFullyConnected, max_pool2d::OpMaxPool2D,
-    reshape::OpReshape,
-};
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
-use berrylite::kernel::micro_operator::i8::fully_connected_i8::{self, OpFullyConnectedInt8};
+use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
@@ -52,7 +48,7 @@ fn predict() -> Result<()> {
         golden_inputs_f32_inputs.push((i, 0.1));
     }
     let delta = 0.05;
-    for (g_input, g_f32_input) in golden_inputs_f32_inputs {
+    for (g_input, _g_f32_input) in golden_inputs_f32_inputs {
         set_input(&mut interpreter, 6, 6, g_input);
         interpreter.invoke()?;
 
