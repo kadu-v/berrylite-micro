@@ -20,12 +20,12 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
-pub struct OpMaxPool2DInt8 {}
+pub struct OpAvgPool2DInt8 {}
 
-impl OpMaxPool2DInt8 {
-    const OPCODE: i32 = 17;
+impl OpAvgPool2DInt8 {
+    const OPCODE: i32 = 1;
 
-    pub fn max_pool2d_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
+    pub fn avg_pool2d_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
             registration: Self::registration(),
             parser: Self::parser,
@@ -73,7 +73,7 @@ impl OpMaxPool2DInt8 {
                 /*dilation_w_factor */ 1, input_h, input_w, filter_h, filter_w, output_h,
                 output_w,
             );
-        Ok(BLiteBuiltinOption::QuantizedMaxPool2DOptions {
+        Ok(BLiteBuiltinOption::QuantizedAvgPool2DOptions {
             op_code,
             fused_activation_min,
             fused_activation_max,
@@ -178,15 +178,16 @@ impl OpMaxPool2DInt8 {
                     for channel in 0..output_depth {
                         let in_x_origin = (out_x * stride_w) - padding_w;
                         let in_y_origin = (out_y * stride_h) - padding_h;
-                        let filter_x_start = core::cmp::max(0, -in_x_origin);
                         let filter_x_end = core::cmp::min(filter_w, input_width - in_x_origin);
+                        let filter_x_start = core::cmp::max(0, -in_x_origin);
                         let filter_y_start = core::cmp::max(0, -in_y_origin);
                         let filter_y_end = core::cmp::min(filter_h, input_height - in_y_origin);
-                        let mut max = FromPrimitive::from_i8(core::i8::MIN).unwrap();
+                        let mut acc = 0;
+                        let mut filter_count = 0;
                         for filter_y in filter_y_start..filter_y_end {
                             for filter_x in filter_x_start..filter_x_end {
-                                let in_y = in_y_origin + filter_y;
                                 let in_x = in_x_origin + filter_x;
+                                let in_y = in_y_origin + filter_y;
                                 let input_v_idx = Self::offset(
                                     input_height,
                                     input_width,
@@ -197,15 +198,23 @@ impl OpMaxPool2DInt8 {
                                     channel,
                                 );
                                 let input_v = input_data[input_v_idx as usize];
-                                if input_v > max {
-                                    max = input_v;
-                                }
+                                acc += AsPrimitive::<i8>::as_(input_v) as i32;
+                                filter_count += 1;
                             }
                         }
+                        if filter_count == 0 {
+                            return Err(BLiteError::FatalError);
+                        }
 
-                        let mut max = AsPrimitive::<i8>::as_(max) as i32;
-                        max = core::cmp::max(max, fused_activation_min);
-                        max = core::cmp::min(max, fused_activation_max);
+                        // Round to the closet integer value
+                        if acc > 0 {
+                            acc = (acc + filter_count / 2) / filter_count;
+                        } else {
+                            acc = (acc - filter_count / 2) / filter_count;
+                        }
+
+                        acc = core::cmp::max(acc, fused_activation_min);
+                        acc = core::cmp::min(acc, fused_activation_max);
 
                         let output_v_idx = Self::offset(
                             output_height,
@@ -217,7 +226,7 @@ impl OpMaxPool2DInt8 {
                             channel,
                         );
                         output_data[output_v_idx as usize] =
-                            FromPrimitive::from_i8(max as i8).unwrap();
+                            FromPrimitive::from_i8(acc as i8).unwrap();
                     }
                 }
             }

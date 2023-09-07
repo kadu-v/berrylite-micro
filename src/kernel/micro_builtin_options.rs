@@ -121,6 +121,23 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
         filter_w: i32,
         filter_h: i32,
     },
+    QuantizedAvgPool2DOptions {
+        op_code: i32,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
+        padding: usize, // 0: same, 1: valid
+        padding_w: i32,
+        padding_h: i32,
+        padding_w_offset: i32,
+        padding_h_offset: i32,
+        stride_w: i32,
+        stride_h: i32,
+        filter_w: i32,
+        filter_h: i32,
+    },
     QuantizedReshapeOptions {},
+    QuantizedSoftMaxOptions {
+        beta: f32,
+    },
     NotInitialize,
 }

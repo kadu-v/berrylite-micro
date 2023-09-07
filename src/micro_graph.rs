@@ -274,10 +274,10 @@ where
         if idx as usize >= operator_codes.len() {
             return Err(MissingRegistration);
         }
-        dbg!(op);
         let tf_op = operator_codes.get(idx as usize);
         let builtin_code = tf_op.builtin_code().0;
         let deprecated_builtin_code = tf_op.deprecated_builtin_code() as i32;
+        dbg!(tf_op, builtin_code, deprecated_builtin_code);
         let blite_op = if builtin_code != deprecated_builtin_code {
             op_resolver.find_op(deprecated_builtin_code)?
         } else {
@@ -285,7 +285,7 @@ where
         };
         let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
-        let builtin_option = parser(allocator, *op, tensors).unwrap();
+        let builtin_option = parser(allocator, *op, tensors)?;
 
         registration.builtin_option = builtin_option;
 

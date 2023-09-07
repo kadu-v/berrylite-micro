@@ -1,12 +1,10 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{calculate_fused_activation_range_quantized, get_activation};
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::utils::calc_per_channel_multiplier_shift;
 use crate::kernel::utils::padding::compute_padding_height_width;
-use crate::kernel::utils::quantization_multiplier::{
-    multiply_by_quantized_multiplier, quantize_multiplier,
-};
+use crate::kernel::utils::quantization::{multiply_by_quantized_multiplier, quantize_multiplier};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -46,7 +44,7 @@ impl OpConv2DInt8 {
         };
         let op_code = builtin_option.fused_activation_function().0 as i32;
         let padding = builtin_option.padding().0 as usize;
-        let activation = get_activation::<i32>(op_code);
+
         let stride_w = builtin_option.stride_w();
         let stride_h = builtin_option.stride_h();
         let dilation_w_factor = builtin_option.dilation_w_factor();
@@ -88,6 +86,8 @@ impl OpConv2DInt8 {
             };
             (scale[0], zero_point[0] as i32)
         };
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range_quantized(output_scale, output_zero_point, op_code)?;
 
         let (padding_w, padding_w_offset, padding_h, padding_h_offset) =
             compute_padding_height_width(
@@ -115,7 +115,8 @@ impl OpConv2DInt8 {
 
         Ok(BLiteBuiltinOption::QuantizedConv2DOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding,
             padding_w,
             padding_h,
@@ -174,7 +175,8 @@ impl OpConv2DInt8 {
 
         let QuantizedConv2DOptions {
             op_code: _,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding: _,
             stride_w,
             stride_h,
@@ -223,7 +225,8 @@ impl OpConv2DInt8 {
             per_channel_multiplier,
             per_channel_shift,
             batches,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
         )
     }
 
@@ -259,7 +262,8 @@ impl OpConv2DInt8 {
         per_channel_shift: &[i32],
         //
         batches: usize,
-        activation: Option<fn(i32) -> i32>,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
     ) -> Result<()> {
         for batch in 0..batches {
             for out_y in 0..output_height {
@@ -321,12 +325,9 @@ impl OpConv2DInt8 {
                             per_channel_shift[out_channel as usize],
                         )?;
 
-                        if let Some(activation) = activation {
-                            total = activation(total);
-                        }
                         total += output_offset;
-                        total = max(total, core::i8::MIN as i32);
-                        total = min(total, core::i8::MAX as i32);
+                        total = max(total, fused_activation_min);
+                        total = min(total, fused_activation_max);
 
                         let output_v_idx = Self::offset(
                             output_height,

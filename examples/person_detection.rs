@@ -2,6 +2,7 @@ use berrylite::kernel::micro_operator::f32::{
     conv2d::OpConv2D, depthwise_conv2d::OpDepthWiseConv2D, fully_connected::OpFullyConnected,
     max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
 };
+use berrylite::kernel::micro_operator::i8::avg_pool2d_i8::OpAvgPool2DInt8;
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
 use berrylite::kernel::micro_operator::i8::depthwise_conv2d_i8::OpDepthWiseConv2DInt8;
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
@@ -35,7 +36,7 @@ fn predict() -> Result<usize> {
     op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
     op_resolver.add_op(OpReshapeInt8::reshape_int8())?;
     op_resolver.add_op(OpConv2DInt8::conv2d_int8())?;
-    op_resolver.add_op(OpMaxPool2DInt8::max_pool2d_int8())?;
+    op_resolver.add_op(OpAvgPool2DInt8::avg_pool2d_int8())?;
     // op_resolver.add_op(OpSoftMax::softmax())?;
     op_resolver.add_op(OpDepthWiseConv2DInt8::depthwise_conv2d_int8())?;
 

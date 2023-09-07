@@ -85,6 +85,17 @@ pub fn multiply_by_quantized_multiplier(
     Ok(result as i32)
 }
 
+pub fn quantize(scale: f32, zero_point: i32, f: f32) -> Result<i32> {
+    let tmp = (f / scale).round();
+    // overflow check
+    if !(core::i32::MIN as f32 <= tmp && tmp <= core::i32::MAX as f32) {
+        return Err(BLiteError::FatalError);
+    }
+
+    let q = zero_point + tmp as i32;
+    Ok(q)
+}
+
 #[cfg(test)]
 mod tests {
 

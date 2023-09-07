@@ -41,6 +41,7 @@ pub enum BLiteError {
 
     // micro reshape
     InCompatibleShape(i32, i32),
-    //
+    // micro_activation
+    NotFoundFusedActivation(i32),
     FatalError,
 }

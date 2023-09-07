@@ -1,8 +1,8 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::calculate_fused_activation_range_quantized;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
-use crate::kernel::utils::quantization_multiplier::{
+use crate::kernel::utils::quantization::{
     get_quantized_convolution_multiplier, multiply_by_quantized_multiplier, quantize_multiplier,
 };
 use crate::micro_allocator::ArenaAllocator;
@@ -87,6 +87,8 @@ impl OpFullyConnectedInt8 {
             };
             (scale[0], zero_point[0] as i32)
         };
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range_quantized(output_scale, output_zero_point, op_code)?;
 
         //This computations is corresponded to CalculateOpDataFullyConnected
         let real_multiplier = get_quantized_convolution_multiplier(
@@ -97,10 +99,10 @@ impl OpFullyConnectedInt8 {
         )?;
         let (output_multiplier, output_shift) = quantize_multiplier(real_multiplier)?;
 
-        let activation = get_activation::<i32>(op_code);
         Ok(BLiteBuiltinOption::QuantizedFullyConnectedOptions {
             op_code,
-            activation: activation,
+            fused_activation_min,
+            fused_activation_max,
             input_offset: -input_zero_point,
             filter_offset: -filter_zero_point,
             output_offset: output_zero_point,
@@ -121,7 +123,8 @@ impl OpFullyConnectedInt8 {
     ) -> Result<()> {
         let QuantizedFullyConnectedOptions {
             op_code: _,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             input_offset,
             filter_offset,
             output_offset,
@@ -163,7 +166,8 @@ impl OpFullyConnectedInt8 {
                 output_shift,
                 accum_depth,
                 batches,
-                activation,
+                fused_activation_min,
+                fused_activation_max,
             )
         } else {
             Self::kernel(
@@ -179,7 +183,8 @@ impl OpFullyConnectedInt8 {
                 output_shift,
                 accum_depth,
                 batches,
-                activation,
+                fused_activation_min,
+                fused_activation_max,
             )
         }
     }
@@ -200,7 +205,8 @@ impl OpFullyConnectedInt8 {
         //
         accum_depth: usize,
         batches: usize,
-        activation: Option<fn(i32) -> i32>,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
     ) -> Result<()> {
         for batch in 0usize..batches {
             for out_d in 0usize..output_depth {
@@ -218,14 +224,10 @@ impl OpFullyConnectedInt8 {
                 }
 
                 total = multiply_by_quantized_multiplier(total, output_multiplier, output_shift)?;
-                // TODO: this code should be placed in the above loop.
-                if let Some(activation) = activation {
-                    total = activation(total);
-                }
 
                 total += output_offset;
-                total = max(total, core::i8::MIN as i32);
-                total = min(total, core::i8::MAX as i32);
+                total = max(total, fused_activation_min);
+                total = min(total, fused_activation_max);
 
                 output_data[batch * output_depth + out_d] =
                     FromPrimitive::from_i8(total as i8).unwrap();

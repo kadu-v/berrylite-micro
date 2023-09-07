@@ -1,8 +1,9 @@
+pub mod fixed_point;
 pub mod padding;
-pub mod quantization_multiplier;
+pub mod quantization;
 
 use crate::micro_erros::Result;
-use quantization_multiplier::quantize_multiplier;
+use quantization::quantize_multiplier;
 
 pub fn calc_per_channel_multiplier_shift(
     input_scale: f32,
