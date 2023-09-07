@@ -55,7 +55,8 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     /// input/filter/output_offset are negative values of input/filter/output_zero_point
     QuantizedFullyConnectedOptions {
         op_code: i32,
-        activation: Option<fn(i32) -> i32>,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
         // for quantization parameters
         input_offset: i32,
         filter_offset: i32,
@@ -67,7 +68,8 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     },
     QuantizedConv2DOptions {
         op_code: i32, // activation operator code
-        activation: Option<fn(i32) -> i32>,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,
         padding_h: i32,
@@ -84,9 +86,31 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
         per_channel_multiplier: &'a [i32],
         per_channel_shift: &'a [i32],
     },
+    QuantizedDepthWiseConv2DOptions {
+        op_code: i32,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
+        padding: usize, // 0: same, 1: valid
+        padding_w: i32,
+        padding_h: i32,
+        padding_w_offset: i32,
+        padding_h_offset: i32,
+        stride_w: i32,
+        stride_h: i32,
+        depth_multiplier: i32,
+        dilation_w_factor: i32,
+        dilation_h_factor: i32,
+        // for quantization parameters
+        input_offset: i32,
+        filter_offset: i32,
+        output_offset: i32,
+        per_channel_multiplier: &'a [i32],
+        per_channel_shift: &'a [i32],
+    },
     QuantizedMaxPool2DOptions {
         op_code: i32,
-        activation: Option<fn(i32) -> i32>,
+        fused_activation_min: i32,
+        fused_activation_max: i32,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,
         padding_h: i32,

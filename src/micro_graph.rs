@@ -48,12 +48,11 @@ where
         model: &Model<'a>,
     ) -> Result<Self> {
         let Some(subgraphs) = model.subgraphs() else {
-            return Err(NotFoundSubgraphs)
+            return Err(NotFoundSubgraphs);
         };
         let Some(buffers) = model.buffers() else {
-            return Err(NotFoundBuffers)
+            return Err(NotFoundBuffers);
         };
-
         let Some(operator_codes) = model.operator_codes() else {
             return Err(NotFoundOperatorCodes);
         };
@@ -77,7 +76,7 @@ where
         };
         for (i, subgraph) in subgraphs.iter().enumerate() {
             let Some(operators) = subgraph.operators() else {
-                return Err(NotFoundOperators)
+                return Err(NotFoundOperators);
             };
 
             let blite_subgraph = BLiteSubgraph::allocate_subgraph(
@@ -208,12 +207,11 @@ where
         quant_params: Option<QuantizationParameters<'a>>,
     ) -> Option<BLiteQuantizationParams> {
         if let Some(quant_params) = quant_params {
-            let Some(scale_vec) =
-                quant_params.scale() else {
-                    return None
-                };
-            let Some(zero_point_vec) = quant_params.zero_point()  else {
-                return  None;
+            let Some(scale_vec) = quant_params.scale() else {
+                return None;
+            };
+            let Some(zero_point_vec) = quant_params.zero_point() else {
+                return None;
             };
 
             let scales = unsafe { from_tflite_vector(&scale_vec) };
@@ -276,10 +274,15 @@ where
         if idx as usize >= operator_codes.len() {
             return Err(MissingRegistration);
         }
-
-        let op_code = operator_codes.get(idx as usize);
-        let builtin_code = op_code.builtin_code();
-        let blite_op = op_resolver.find_op(&builtin_code)?;
+        dbg!(op);
+        let tf_op = operator_codes.get(idx as usize);
+        let builtin_code = tf_op.builtin_code().0;
+        let deprecated_builtin_code = tf_op.deprecated_builtin_code() as i32;
+        let blite_op = if builtin_code != deprecated_builtin_code {
+            op_resolver.find_op(deprecated_builtin_code)?
+        } else {
+            op_resolver.find_op(builtin_code)?
+        };
         let mut registration = blite_op.get_registration();
         let parser = blite_op.get_parser();
         let builtin_option = parser(allocator, *op, tensors).unwrap();

@@ -17,8 +17,9 @@ kyewords = ["Tensorflow Lite", "no_std"]
 [dependencies]
 libm = "*"
 
+
 [dependencies.num-traits]
-version = "0.2"
+version = "*"
 default-features = false
 features = ["libm"]
 

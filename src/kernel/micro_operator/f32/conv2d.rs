@@ -123,18 +123,19 @@ impl OpConv2D {
         let filters_per_group = output_depth / groups;
 
         let Conv2DOptions {
-            op_code:_,
+            op_code: _,
             activation,
-            padding:_,
+            padding: _,
             stride_w,
             stride_h,
             dilation_w_factor,
             dilation_h_factor,
             padding_w,
             padding_h,
-            padding_w_offset:_,
-            padding_h_offset:_ ,
-        } = builtin_option else {
+            padding_w_offset: _,
+            padding_h_offset: _,
+        } = builtin_option
+        else {
             return Err(NotCompatibleOption);
         };
 

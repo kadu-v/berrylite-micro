@@ -77,12 +77,9 @@ impl OpSoftMax {
             for c in 0..depth {
                 let idx = (i * depth + c) as usize;
                 let Some(exp_c) = FromPrimitive::from_f32(
-                    (AsPrimitive::<f32>::as_(
-                        input.data[idx] - max,
-                    ) * beta)
-                        .exp(),
+                    (AsPrimitive::<f32>::as_(input.data[idx] - max) * beta).exp(),
                 ) else {
-                    return Err(InCompatibleCasting)
+                    return Err(InCompatibleCasting);
                 };
 
                 output.data[idx] = exp_c;

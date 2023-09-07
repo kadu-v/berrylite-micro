@@ -46,9 +46,9 @@ impl OpFullyConnectedInt8 {
 
         let input_idx = op.inputs().unwrap().get(0) as usize;
         let (input_scale, input_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[input_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[input_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
@@ -56,9 +56,9 @@ impl OpFullyConnectedInt8 {
 
         let filter_idx = op.inputs().unwrap().get(1) as usize;
         let (filter_scale, filter_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[filter_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[filter_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
@@ -66,11 +66,13 @@ impl OpFullyConnectedInt8 {
 
         let bias_idx = op.inputs().unwrap().get(2);
         let bias_scale = if bias_idx >= 0 {
-            let Some(BLiteQuantizationParams {
-                scale, ..
-             }) = tensors[bias_idx as usize]._i32_tensor()?.borrow().quant_params else {
-                 return Err(BLiteError::NotFoundQuantParams);
-             };
+            let Some(BLiteQuantizationParams { scale, .. }) = tensors[bias_idx as usize]
+                ._i32_tensor()?
+                .borrow()
+                .quant_params
+            else {
+                return Err(BLiteError::NotFoundQuantParams);
+            };
             Some(scale[0])
         } else {
             None
@@ -78,9 +80,9 @@ impl OpFullyConnectedInt8 {
 
         let output_idx = op.outputs().unwrap().get(0) as usize;
         let (output_scale, output_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[output_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[output_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
@@ -125,7 +127,8 @@ impl OpFullyConnectedInt8 {
             output_offset,
             output_multiplier,
             output_shift,
-        } = builtin_option else {
+        } = builtin_option
+        else {
             return Err(NotInitializeActivation);
         };
 

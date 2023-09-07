@@ -26,15 +26,16 @@ impl<'a, const N: usize, T: ArrayElem<T>, S: ArenaAllocator> BLiteOpResolver<'a,
         }
     }
 
-    pub fn find_op(&self, op: &BuiltinOperator) -> Result<&'a BLiteOperator<T, S>> {
+    pub fn find_op(&self, op_code: i32) -> Result<&'a BLiteOperator<T, S>> {
         for operator in &self.operators {
             if let Some(blite_op) = operator {
-                if blite_op.get_op_code() == op.0 {
+                let blite_op_code = blite_op.get_op_code();
+                if blite_op_code == op_code {
                     return Ok(blite_op);
                 }
             }
         }
-        Err(NotFoundOperator(op.0))
+        Err(NotFoundOperator(op_code))
     }
 
     pub fn add_op(&mut self, operator: BLiteOperator<'a, T, S>) -> Result<()> {

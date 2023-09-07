@@ -2,6 +2,7 @@ use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::utils::calc_per_channel_multiplier_shift;
 use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::kernel::utils::quantization_multiplier::{
     multiply_by_quantized_multiplier, quantize_multiplier,
@@ -55,9 +56,9 @@ impl OpConv2DInt8 {
         let input_h = tensors[input_idx]._b_tensor()?.borrow().dims[1];
         let input_w = tensors[input_idx]._b_tensor()?.borrow().dims[2];
         let (input_scale, input_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[input_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[input_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
@@ -67,9 +68,9 @@ impl OpConv2DInt8 {
         let filter_h = tensors[filter_idx]._b_tensor()?.borrow().dims[1];
         let filter_w = tensors[filter_idx]._b_tensor()?.borrow().dims[2];
         let (filter_scales, filter_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[filter_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[filter_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale, zero_point[0] as i32)
@@ -80,9 +81,9 @@ impl OpConv2DInt8 {
         let output_w = tensors[output_idx]._b_tensor()?.borrow().dims[2];
         let output_ch = tensors[output_idx]._b_tensor()?.borrow().dims[3];
         let (output_scale, output_zero_point) = {
-            let Some(BLiteQuantizationParams {
-               scale, zero_point
-            }) = tensors[output_idx]._b_tensor()?.borrow().quant_params else {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[output_idx]._b_tensor()?.borrow().quant_params
+            else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
@@ -104,7 +105,7 @@ impl OpConv2DInt8 {
             );
         let per_channel_multiplier = unsafe { alloc_array_mut(allocator, output_ch as usize) }?;
         let per_channel_shift = unsafe { alloc_array_mut(allocator, output_ch as usize) }?;
-        Self::calc_per_channer_multiplier_shift(
+        calc_per_channel_multiplier_shift(
             input_scale,
             filter_scales,
             output_scale,
@@ -131,23 +132,6 @@ impl OpConv2DInt8 {
             per_channel_multiplier,
             per_channel_shift,
         })
-    }
-
-    pub fn calc_per_channer_multiplier_shift(
-        input_scale: f32,
-        filter_scales: &[f32],
-        output_scale: f32,
-        per_channel_multiplier: &mut [i32],
-        per_channel_shift: &mut [i32],
-    ) -> Result<()> {
-        for (i, &filter_scale) in filter_scales.iter().enumerate() {
-            let effective_output_scale =
-                input_scale as f64 * filter_scale as f64 / output_scale as f64;
-            let (multiplier, shift) = quantize_multiplier(effective_output_scale)?;
-            per_channel_multiplier[i] = multiplier;
-            per_channel_shift[i] = shift;
-        }
-        Ok(())
     }
 
     pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {
@@ -189,23 +173,25 @@ impl OpConv2DInt8 {
         let filters_per_group = output_depth / groups;
 
         let QuantizedConv2DOptions {
-            op_code:_,
+            op_code: _,
             activation,
-            padding:_,
+            padding: _,
             stride_w,
             stride_h,
             dilation_w_factor,
             dilation_h_factor,
             padding_w,
             padding_h,
-            padding_w_offset:_,
-            padding_h_offset:_ ,
+            padding_w_offset: _,
+            padding_h_offset: _,
+            // for quantization
             input_offset,
             filter_offset,
             output_offset,
             per_channel_multiplier,
             per_channel_shift,
-        } = builtin_option else {
+        } = builtin_option
+        else {
             return Err(NotCompatibleOption);
         };
 
