@@ -16,6 +16,7 @@ kyewords = ["Tensorflow Lite", "no_std"]
 
 [dependencies]
 libm = "*"
+image = "*"
 
 
 [dependencies.num-traits]

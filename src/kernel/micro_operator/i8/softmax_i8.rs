@@ -2,11 +2,12 @@ use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::micro_operator::BLiteOperator;
+use crate::kernel::utils::quantization::{dequantize, quantize};
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_array::ArrayElem;
+use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::NotFoundOption;
 use crate::micro_erros::BLiteError::*;
+use crate::micro_erros::BLiteError::{self, NotFoundOption};
 use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
@@ -19,7 +20,6 @@ pub struct OpSoftMaxInt8 {}
 
 impl OpSoftMaxInt8 {
     const OPCODE: i32 = 25;
-    const F: i32 = 31;
 
     pub fn softmax_int8<'a, T: ArrayElem<T>, S: ArenaAllocator>() -> BLiteOperator<'a, T, S> {
         BLiteOperator {
@@ -31,14 +31,41 @@ impl OpSoftMaxInt8 {
     pub fn parser<'a, T: ArrayElem<T>>(
         _allocator: &mut impl ArenaAllocator,
         op: Operator,
-        _tensors: &mut [BLiteTensor<'a, T>],
+        tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<BLiteBuiltinOption<'a, T>> {
         let builtin_option = op.builtin_options_as_softmax_options();
         let mut beta = 1.0;
         if let Some(builtin_option) = builtin_option {
             beta = builtin_option.beta();
         }
-        Ok(BLiteBuiltinOption::QuantizedSoftMaxOptions { beta })
+
+        let input_idx = op.inputs().unwrap().get(0) as usize;
+        let (input_scale, input_zero_point) = {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[input_idx]._b_tensor()?.borrow().quant_params
+            else {
+                return Err(BLiteError::NotFoundQuantParams);
+            };
+            (scale[0], zero_point[0] as i32)
+        };
+
+        let output_idx = op.outputs().unwrap().get(0) as usize;
+        let (output_scale, output_zero_point) = {
+            let Some(BLiteQuantizationParams { scale, zero_point }) =
+                tensors[output_idx]._b_tensor()?.borrow().quant_params
+            else {
+                return Err(BLiteError::NotFoundQuantParams);
+            };
+            (scale[0], zero_point[0] as i32)
+        };
+
+        Ok(BLiteBuiltinOption::QuantizedSoftMaxOptions {
+            beta,
+            input_scale,
+            input_zero_point,
+            output_scale,
+            output_zero_point,
+        })
     }
 
     pub fn registration<'a, T: ArrayElem<T>>() -> BLiteRegistration<'a, T> {
@@ -53,7 +80,6 @@ impl OpSoftMaxInt8 {
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
         let input = tensors[idx_input]._b_tensor()?.borrow();
-
         let idx_output = node.outputs[0] as usize;
         let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
 
@@ -62,35 +88,50 @@ impl OpSoftMaxInt8 {
             .iter()
             .fold(1, |x, &acc| x * acc);
         let depth = input.dims[input.dims.len() - 1];
-        let SoftMaxOptions { beta } = builtin_option else {
+        let QuantizedSoftMaxOptions {
+            beta,
+            input_scale,
+            input_zero_point,
+            output_scale,
+            output_zero_point,
+        } = builtin_option
+        else {
             return Err(NotFoundOption);
         };
 
-        // for i in 0..outer_size {
-        //     let mut max_in_row = core::i8::MIN as i32;
-        //     for c in 0..depth {
-        //         let input_v = AsPrimitive::<i8>::as_(input.data[(i * depth + c) as usize]) as i32;
-        //         max_in_row = core::cmp::max(max_in_row, input_v);
-        //     }
+        for i in 0..outer_size {
+            let mut max = core::f32::MIN;
+            for c in 0..depth {
+                let input_v = AsPrimitive::<i8>::as_(input.data[(i * depth + c) as usize]);
+                let dequantize_v = dequantize(input_scale, input_zero_point, input_v)?;
+                if dequantize_v > max {
+                    max = dequantize_v;
+                }
+            }
 
-        //     let mut sum_of_exps: FixedPoint0 = FixedI32::<31>::from(0);
-        //     for c in 0..depth {
-        //         let idx = (i * depth + c) as usize;
-        //         let Some(exp_c) = FromPrimitive::from_f32(
-        //             (AsPrimitive::<f32>::as_(input.data[idx] - max) * beta).exp(),
-        //         ) else {
-        //             return Err(InCompatibleCasting);
-        //         };
+            let mut sum: f32 = 0.0;
+            for c in 0..depth {
+                let idx = (i * depth + c) as usize;
+                let input_v = AsPrimitive::<i8>::as_(input.data[idx as usize]);
+                let dequantize_v = dequantize(input_scale, input_zero_point, input_v)?;
+                let exp_c = ((dequantize_v - max) * beta).exp();
+                let mut quantize_exp_c = quantize(output_scale, output_zero_point, exp_c)?;
 
-        //         output.data[idx] = exp_c;
-        //         sum = sum + exp_c;
-        //     }
+                quantize_exp_c = core::cmp::max(quantize_exp_c, core::i8::MIN as i32);
+                quantize_exp_c = core::cmp::min(quantize_exp_c, core::i8::MAX as i32);
+                output.data[idx] = FromPrimitive::from_i8(quantize_exp_c as i8).unwrap();
+                sum = sum + exp_c;
+            }
 
-        //     for c in 0..depth {
-        //         let idx = (i * depth + c) as usize;
-        //         output.data[idx] = output.data[idx] / sum;
-        //     }
-        // }
+            for c in 0..depth {
+                let idx = (i * depth + c) as usize;
+                let out_v = AsPrimitive::<i8>::as_(output.data[idx]);
+                let dequantize_out_v = dequantize(output_scale, output_zero_point, out_v)?;
+                let v = dequantize_out_v / sum;
+                let quantize_out_v = quantize(output_scale, output_zero_point, v)? as i8;
+                output.data[idx] = FromPrimitive::from_i8(quantize_out_v).unwrap();
+            }
+        }
         Ok(())
     }
 }

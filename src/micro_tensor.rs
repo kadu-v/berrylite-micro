@@ -3,7 +3,7 @@ use crate::micro_erros::{BLiteError, Result};
 use core::cell::RefCell;
 
 // pub type BLiteTensor<'a, T> = RefCell<BLiteArray<'a, T>>;
-type BLiteInnerTensor<'a, T> = RefCell<BLiteArray<'a, T>>;
+pub type BLiteInnerTensor<'a, T> = RefCell<BLiteArray<'a, T>>;
 
 #[derive(Debug)]
 pub enum BLiteTensor<'a, T>
@@ -11,7 +11,7 @@ where
     T: ArrayElem<T> + 'a,
 {
     BTensor(BLiteInnerTensor<'a, T>),
-    I32Tensor(RefCell<BLiteArray<'a, i32>>),
+    I32Tensor(BLiteInnerTensor<'a, i32>),
 }
 
 impl<'a, T> BLiteTensor<'a, T>

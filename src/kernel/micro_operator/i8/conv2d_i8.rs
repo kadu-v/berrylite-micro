@@ -328,7 +328,6 @@ impl OpConv2DInt8 {
                         total += output_offset;
                         total = max(total, fused_activation_min);
                         total = min(total, fused_activation_max);
-
                         let output_v_idx = Self::offset(
                             output_height,
                             output_width,

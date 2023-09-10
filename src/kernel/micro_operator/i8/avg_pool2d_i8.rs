@@ -3,7 +3,7 @@ use num_traits::{AsPrimitive, FromPrimitive};
 use crate::kernel::micro_activation::{calculate_fused_activation_range_quantized, get_activation};
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption,
-    BLiteBuiltinOption::{NotInitialize, QuantizedMaxPool2DOptions},
+    BLiteBuiltinOption::{NotInitialize, QuantizedAvgPool2DOptions},
 };
 use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::micro_allocator::ArenaAllocator;
@@ -73,7 +73,7 @@ impl OpAvgPool2DInt8 {
                 /*dilation_w_factor */ 1, input_h, input_w, filter_h, filter_w, output_h,
                 output_w,
             );
-        Ok(BLiteBuiltinOption::QuantizedAvgPool2DOptions {
+        Ok(QuantizedAvgPool2DOptions {
             op_code,
             fused_activation_min,
             fused_activation_max,
@@ -112,7 +112,7 @@ impl OpAvgPool2DInt8 {
         let output_depth = output.dims[3];
 
         let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
-        let QuantizedMaxPool2DOptions {
+        let QuantizedAvgPool2DOptions {
             op_code: _,
             fused_activation_min,
             fused_activation_max,
@@ -184,6 +184,7 @@ impl OpAvgPool2DInt8 {
                         let filter_y_end = core::cmp::min(filter_h, input_height - in_y_origin);
                         let mut acc = 0;
                         let mut filter_count = 0;
+
                         for filter_y in filter_y_start..filter_y_end {
                             for filter_x in filter_x_start..filter_x_end {
                                 let in_x = in_x_origin + filter_x;
@@ -205,7 +206,6 @@ impl OpAvgPool2DInt8 {
                         if filter_count == 0 {
                             return Err(BLiteError::FatalError);
                         }
-
                         // Round to the closet integer value
                         if acc > 0 {
                             acc = (acc + filter_count / 2) / filter_count;
@@ -231,7 +231,6 @@ impl OpAvgPool2DInt8 {
                 }
             }
         }
-
         Ok(())
     }
 

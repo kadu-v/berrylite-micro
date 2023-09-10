@@ -10,6 +10,7 @@ pub struct BLiteInterpreter<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
+    version: u32,
     pub input: &'a mut BLiteArray<'a, T>,
     pub output: &'a BLiteArray<'a, T>,
     graph: BLiteGraph<'a, T>,
@@ -24,6 +25,8 @@ where
         op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
         model: &'a Model<'a>,
     ) -> Result<Self> {
+        let version = model.version();
+
         let graph = BLiteGraph::allocate_graph(allocator, op_resolver, model)?;
 
         let subgraph = model.subgraphs().unwrap().get(0);
@@ -52,18 +55,15 @@ where
         };
 
         Ok(Self {
+            version,
             input,
             output,
             graph,
         })
     }
 
-    fn input_size(model: &Model<'a>) -> usize {
-        model.subgraphs().unwrap().get(0).inputs().unwrap().len()
-    }
-
-    fn output_size(model: &Model<'a>) -> usize {
-        model.subgraphs().unwrap().get(0).outputs().unwrap().len()
+    pub fn version(&self) -> u32 {
+        self.version
     }
 
     pub fn invoke(&self) -> Result<()> {
@@ -80,5 +80,13 @@ where
         self.output
             .get_quantization_scale_and_zero_point()
             .map(|(scale, zero_point)| (scale[0], zero_point[0] as i32))
+    }
+
+    fn input_size(model: &Model<'a>) -> usize {
+        model.subgraphs().unwrap().get(0).inputs().unwrap().len()
+    }
+
+    fn output_size(model: &Model<'a>) -> usize {
+        model.subgraphs().unwrap().get(0).outputs().unwrap().len()
     }
 }

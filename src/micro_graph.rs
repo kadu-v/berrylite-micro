@@ -277,7 +277,6 @@ where
         let tf_op = operator_codes.get(idx as usize);
         let builtin_code = tf_op.builtin_code().0;
         let deprecated_builtin_code = tf_op.deprecated_builtin_code() as i32;
-        dbg!(tf_op, builtin_code, deprecated_builtin_code);
         let blite_op = if builtin_code != deprecated_builtin_code {
             op_resolver.find_op(deprecated_builtin_code)?
         } else {

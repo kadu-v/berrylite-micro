@@ -24,19 +24,19 @@ pub fn calculate_fused_activation_range_quantized(
     match op {
         1 /* Relu */  => {
             let q_min = quantize(scale, zero_point, 0.0)?;
-            activation_min = core::cmp::min(activation_min, q_min);
+            activation_min = core::cmp::max(activation_min, q_min);
         },
         2 /* ReluN1To1 */ => {
             let q_min = quantize(scale, zero_point, -1.0)?;
             let q_max = quantize(scale, zero_point, 1.0)?;
-            activation_min = core::cmp::min(activation_min, q_min);
-            activation_max = core::cmp::max(activation_max, q_max);
+            activation_min = core::cmp::max(activation_min, q_min);
+            activation_max = core::cmp::min(activation_max, q_max);
         }
         3 /* Relu6 */ => {
             let q_min = quantize(scale, zero_point, 0.0)?;
             let q_max = quantize(scale, zero_point, 6.0)?;
-            activation_min = core::cmp::min(activation_min, q_min);
-            activation_max = core::cmp::max(activation_max, q_max);
+            activation_min = core::cmp::max(activation_min, q_min);
+            activation_max = core::cmp::min(activation_max, q_max);
         },
         0 /* None */ |4 /* Tanh */ | 5 /*SignBit */ | 6 /* Sigmoid */ => {/* do nothing */},
         _ => {
@@ -44,5 +44,5 @@ pub fn calculate_fused_activation_range_quantized(
         }
     }
 
-    Ok((activation_max, activation_min))
+    Ok((activation_min, activation_max))
 }

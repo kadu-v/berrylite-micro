@@ -138,6 +138,10 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     QuantizedReshapeOptions {},
     QuantizedSoftMaxOptions {
         beta: f32,
+        input_scale: f32,
+        input_zero_point: i32,
+        output_scale: f32,
+        output_zero_point: i32,
     },
     NotInitialize,
 }

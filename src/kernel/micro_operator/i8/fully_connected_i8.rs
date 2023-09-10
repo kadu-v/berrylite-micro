@@ -233,7 +233,6 @@ impl OpFullyConnectedInt8 {
                     FromPrimitive::from_i8(total as i8).unwrap();
             }
         }
-
         Ok(())
     }
 }

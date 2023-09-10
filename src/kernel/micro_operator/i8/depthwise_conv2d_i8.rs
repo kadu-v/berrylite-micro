@@ -127,11 +127,11 @@ impl OpDepthWiseConv2DInt8 {
             depth_multiplier,
             dilation_w_factor,
             dilation_h_factor,
-            input_offset: 0,
-            filter_offset: 0,
-            output_offset: 0,
-            per_channel_multiplier: &[],
-            per_channel_shift: &[],
+            input_offset: -input_zero_point,
+            filter_offset: -filter_zero_point,
+            output_offset: output_zero_point,
+            per_channel_multiplier,
+            per_channel_shift,
         })
     }
 
@@ -309,13 +309,11 @@ impl OpDepthWiseConv2DInt8 {
                             }
                             let bias_v = bias_data[out_channel as usize];
                             total += bias_v;
-
                             total = multiply_by_quantized_multiplier(
                                 total,
                                 per_channel_multiplier[out_channel as usize],
                                 per_channel_shift[out_channel as usize],
                             )?;
-
                             total += output_offset;
                             total = max(total, fused_activation_min);
                             total = min(total, fused_activation_max);
@@ -329,7 +327,6 @@ impl OpDepthWiseConv2DInt8 {
                                 out_x,
                                 out_channel,
                             );
-
                             output_data[output_v_idx as usize] =
                                 FromPrimitive::from_i8(total as i8).unwrap();
                         }

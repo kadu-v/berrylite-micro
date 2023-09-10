@@ -45,7 +45,6 @@ impl OpReshapeInt8 {
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
         let input = tensors[idx_input]._b_tensor()?.borrow();
-
         let idx_output = node.outputs[0] as usize;
         let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
 
