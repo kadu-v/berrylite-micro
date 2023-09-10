@@ -3,5 +3,4 @@
         "**/.git": true,
         "./flatbuffers": true,
     },
-    "cmake.sourceDirectory": "/home/kaduv/Documents/rust/verdigirisflow/flatbuffers"
 }
