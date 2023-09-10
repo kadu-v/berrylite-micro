@@ -1,21 +1,10 @@
 use core::fmt::Debug;
-use core::marker::PhantomData;
 
 #[derive(Debug)]
-pub struct BLiteContext<'a, T>
-where
-    T: Debug + Clone + Copy,
-{
-    _x: PhantomData<&'a T>,
-}
+pub struct BLiteContext {}
 
-impl<'a, T> BLiteContext<'a, T>
-where
-    T: Debug + Clone + Copy,
-{
+impl BLiteContext {
     pub fn new() -> Self {
-        Self {
-            _x: Default::default(),
-        }
+        Self {}
     }
 }

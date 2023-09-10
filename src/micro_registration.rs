@@ -8,30 +8,30 @@ use crate::micro_node::BLiteNode;
 use crate::micro_tensor::BLiteTensor;
 
 #[derive(Clone, Copy)]
-pub struct BLiteRegistration<T>
+pub struct BLiteRegistration<'a, T>
 where
     T: ArrayElem<T>,
 {
     pub op_code: i32,
-    pub eval: for<'a> fn(
-        context: &BLiteContext<'a, T>,
+    pub eval: fn(
+        context: &BLiteContext,
         tensors: &'a mut [BLiteTensor<'a, T>],
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()>,
-    pub builtin_option: BLiteBuiltinOption<T>,
+    pub builtin_option: BLiteBuiltinOption<'a, T>,
 }
 
-impl<T: ArrayElem<T>> BLiteRegistration<T> {
+impl<'a, T: ArrayElem<T>> BLiteRegistration<'a, T> {
     pub fn new(
         op_code: i32,
-        eval: for<'a> fn(
-            context: &BLiteContext<'a, T>,
+        eval: fn(
+            _context: &BLiteContext,
             tensors: &'a mut [BLiteTensor<'a, T>],
             node: &BLiteNode<'a>,
             builtin_option: BLiteBuiltinOption<T>,
         ) -> Result<()>,
-        builtin_option: BLiteBuiltinOption<T>,
+        builtin_option: BLiteBuiltinOption<'a, T>,
     ) -> Self {
         Self {
             op_code,
@@ -40,10 +40,10 @@ impl<T: ArrayElem<T>> BLiteRegistration<T> {
         }
     }
 
-    pub fn call_eval<'a>(
+    pub fn call_eval(
         &self,
         tensors: &'a mut [BLiteTensor<'a, T>],
-        context: &BLiteContext<'a, T>,
+        context: &BLiteContext,
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
@@ -52,16 +52,12 @@ impl<T: ArrayElem<T>> BLiteRegistration<T> {
     }
 }
 
-impl<T: ArrayElem<T>> Debug for BLiteRegistration<T> {
-    fn fmt(
-        &self,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
+impl<'a, T: ArrayElem<T>> Debug for BLiteRegistration<'a, T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
             "Registration {{ op_code: {}, eval:..., builtin_option: {:?} }}",
-            self.op_code,
-            self.builtin_option
+            self.op_code, self.builtin_option
         )?;
         Ok(())
     }

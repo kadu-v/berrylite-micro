@@ -15,9 +15,12 @@ kyewords = ["Tensorflow Lite", "no_std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+libm = "*"
+image = "*"
+
 
 [dependencies.num-traits]
-version = "0.2"
+version = "*"
 default-features = false
 features = ["libm"]
 
