@@ -46,7 +46,7 @@ pub fn quantize_multiplier(real_multiplier: f64) -> Result<(i32, i32)> {
         shift += 1;
     }
 
-    if !(q_fixed <= std::i32::MAX as i64) {
+    if !(q_fixed <= core::i32::MAX as i64) {
         return Err(BLiteError::InCompatibleCasting);
     }
 
@@ -78,7 +78,7 @@ pub fn multiply_by_quantized_multiplier(
     let mut result = x as i64 * (quantized_multiplier as i64) + round;
     result = result >> total_shift;
 
-    if !(std::i32::MIN as i64 <= result && result <= std::i32::MAX as i64) {
+    if !(core::i32::MIN as i64 <= result && result <= core::i32::MAX as i64) {
         return Err(BLiteError::InCompatibleCasting);
     }
 
@@ -87,6 +87,7 @@ pub fn multiply_by_quantized_multiplier(
 
 pub fn quantize(scale: f32, zero_point: i32, f: f32) -> Result<i32> {
     let tmp = (f / scale).round();
+
     // overflow check
     if !(core::i32::MIN as f32 <= tmp && tmp <= core::i32::MAX as f32) {
         return Err(BLiteError::FatalError);
