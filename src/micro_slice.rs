@@ -4,7 +4,7 @@ use flatbuffers::Vector;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_erros::Result;
 use core::mem::size_of;
-use std::{fmt::Debug, mem::align_of};
+use core::{fmt::Debug, mem::align_of};
 
 // because of changing lifetime 'b to 'a
 pub unsafe fn from_tflite_vector<'b, S, U: Debug>(vector: &Vector<'b, S>) -> &'b [U] {

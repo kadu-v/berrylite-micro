@@ -4,7 +4,6 @@ use crate::kernel::micro_operator::BLiteOperator;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::{BLiteError::*, Result};
-use crate::tflite_schema_generated::tflite::BuiltinOperator;
 
 #[derive(Debug, Clone)]
 pub struct BLiteOpResolver<'a, const N: usize, T, S>

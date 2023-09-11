@@ -42,7 +42,7 @@ fn predict(image: &[u8]) -> Result<usize> {
 
     let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<7, i8, _>::new();
+    let mut op_resolver = BLiteOpResolver::<7, _, _>::new();
     op_resolver.add_op(OpFullyConnectedInt8::fully_connected_int8())?;
     op_resolver.add_op(OpReshapeInt8::reshape_int8())?;
     op_resolver.add_op(OpConv2DInt8::conv2d_int8())?;
@@ -59,10 +59,12 @@ fn predict(image: &[u8]) -> Result<usize> {
     interpreter.invoke()?;
 
     let output = interpreter.output;
+    dbg!(output);
     let mut num_prob = 0.;
     let mut num = 0;
     for (i, &y_pred) in output.data.iter().enumerate() {
         let prob = output_scale * (y_pred as i32 - output_zero_point) as f32;
+        dbg!(prob);
         if prob > num_prob {
             num_prob = prob;
             num = i;
