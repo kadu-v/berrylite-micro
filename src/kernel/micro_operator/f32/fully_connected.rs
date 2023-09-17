@@ -53,14 +53,17 @@ impl OpFullyConnected {
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
-        let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let idx_input = node.inputs[0];
+        let input = tensors[idx_input as usize]._b_tensor()?.borrow();
 
-        let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter]._b_tensor()?.borrow();
+        let idx_filter = node.inputs[1];
+        let filter = tensors[idx_filter as usize]._b_tensor()?.borrow();
 
-        let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let idx_output = node.outputs[0];
+        let mut output = tensors[idx_output as usize]._b_tensor()?.borrow_mut();
+        let output_data_size = output.data.len();
+
+        let idx_bias = node.inputs[2];
 
         let activation = match builtin_option {
             FullyConnectedOptions {
@@ -72,29 +75,67 @@ impl OpFullyConnected {
         };
 
         // TODO:
-        let batches = 1usize;
-        let output_depth = filter.dims[filter.dims.len() - 2] as usize;
-        let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
+        let batches = 1;
+        let output_depth = filter.dims[filter.dims.len() - 2];
+        let accum_depth = filter.dims[filter.dims.len() - 1];
 
-        for batch in 0..batches {
-            for out_d in 0..output_depth {
+        if idx_bias >= 0 {
+            let bias = tensors[idx_bias as usize]._b_tensor()?.borrow();
+            Self::kernel(
+                input.data,
+                Some(&bias.data),
+                filter.data,
+                output.data,
+                batches,
+                output_data_size,
+                output_depth,
+                accum_depth,
+                activation,
+            )
+        } else {
+            Self::kernel(
+                input.data,
+                None,
+                filter.data,
+                output.data,
+                batches,
+                output_data_size,
+                output_depth,
+                accum_depth,
+                activation,
+            )
+        }
+    }
+
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        bias_data: Option<&[T]>,
+        filter_data: &[T],
+        output_data: &mut [T],
+        batches: i32,
+        output_data_size: usize,
+        output_depth: i32,
+        accum_depth: i32,
+        activation: Option<fn(T) -> T>,
+    ) -> Result<()> {
+        for batch in 0..batches as usize {
+            for out_d in 0..output_depth as usize {
                 let mut total: T = Default::default();
-                for acc_d in 0..accum_depth {
-                    total += input.data[batch * accum_depth + acc_d]
-                        * filter.data[out_d * accum_depth + acc_d];
+                for acc_d in 0..accum_depth as usize {
+                    total += input_data[batch * accum_depth as usize + acc_d]
+                        * filter_data[out_d * accum_depth as usize + acc_d];
                 }
-                output.data[batch * output_depth + out_d] = total;
+                output_data[batch * output_depth as usize + out_d] = total;
 
-                let idx_bias = node.inputs[2];
-                if idx_bias >= 0 {
-                    let bias = tensors[idx_bias as usize]._b_tensor()?.borrow();
-                    output.data[batch * output_depth + out_d] += bias.data[out_d];
+                if let Some(bias_data) = bias_data {
+                    let bias = bias_data[out_d];
+                    output_data[batch * output_depth as usize + out_d] += bias;
                 }
             }
         }
         if let Some(activation) = activation {
-            for i in 0..output.data.len() {
-                output.data[i] = activation(output.data[i]);
+            for i in 0..output_data_size {
+                output_data[i] = activation(output_data[i]);
             }
         }
 
