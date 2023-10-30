@@ -46,16 +46,16 @@ impl OpConv2D {
         let dilation_h_factor = builtin_option.dilation_h_factor();
 
         let input_idx = op.inputs().unwrap().get(0) as usize;
-        let input_h = tensors[input_idx]._b_tensor()?.borrow().dims[1];
-        let input_w = tensors[input_idx]._b_tensor()?.borrow().dims[2];
+        let input_h = tensors[input_idx]._t()?.borrow().dims[1];
+        let input_w = tensors[input_idx]._t()?.borrow().dims[2];
 
         let filter_idx = op.inputs().unwrap().get(1) as usize;
-        let filter_h = tensors[filter_idx]._b_tensor()?.borrow().dims[1];
-        let filter_w = tensors[filter_idx]._b_tensor()?.borrow().dims[2];
+        let filter_h = tensors[filter_idx]._t()?.borrow().dims[1];
+        let filter_w = tensors[filter_idx]._t()?.borrow().dims[2];
 
         let output_idx = op.outputs().unwrap().get(0) as usize;
-        let output_h = tensors[output_idx]._b_tensor()?.borrow().dims[1];
-        let output_w = tensors[output_idx]._b_tensor()?.borrow().dims[2];
+        let output_h = tensors[output_idx]._t()?.borrow().dims[1];
+        let output_w = tensors[output_idx]._t()?.borrow().dims[2];
 
         let (padding_w, padding_w_offset, padding_h, padding_h_offset) =
             compute_padding_height_width(
@@ -97,22 +97,22 @@ impl OpConv2D {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
         let input_height = input.dims[1];
         let input_width = input.dims[2];
         let input_depth = input.dims[3];
 
         let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter]._b_tensor()?.borrow();
+        let filter = tensors[idx_filter]._t()?.borrow();
         let filter_height = filter.dims[1];
         let filter_width = filter.dims[2];
         let filter_input_depth = filter.dims[3];
 
         // Why does a bias exist depsite of setting use_bias=False
         let idx_bias = node.inputs[2] as usize;
-        let bias = tensors[idx_bias]._b_tensor()?.borrow();
+        let bias = tensors[idx_bias]._t()?.borrow();
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
         let output_height = output.dims[1];
         let output_width = output.dims[2];
         let output_depth = output.dims[3];

@@ -3,6 +3,7 @@ pub mod relu;
 use crate::kernel::utils::quantization::quantize;
 use crate::micro_array::ArrayElem;
 use crate::micro_erros::{BLiteError, Result};
+use num_traits::AsPrimitive;
 use relu::relu;
 
 pub fn get_activation<T: ArrayElem<T>>(op_code: i32) -> Option<fn(T) -> T> {
@@ -12,13 +13,13 @@ pub fn get_activation<T: ArrayElem<T>>(op_code: i32) -> Option<fn(T) -> T> {
     }
 }
 
-pub fn calculate_fused_activation_range_quantized(
+pub fn calculate_fused_activation_range_quantized<T: ArrayElem<T>>(
     scale: f32,
     zero_point: i32,
     op: i32,
 ) -> Result<(i32 /* activtion_min */, i32 /* activation_max */)> {
-    let mut activation_min = core::i8::MIN as i32;
-    let mut activation_max = core::i8::MAX as i32;
+    let mut activation_min = AsPrimitive::<i32>::as_(T::MIN);
+    let mut activation_max = AsPrimitive::<i32>::as_(T::MAX);
 
     // Note that the I only consider the type of tensor is int8
     match op {

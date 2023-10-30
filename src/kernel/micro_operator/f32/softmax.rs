@@ -55,10 +55,10 @@ impl OpSoftMax {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
 
         let trailing_dims = &input.dims[0..input.dims.len() - 1];
         let outer_size = trailing_dims.iter().fold(1, |x, &acc| x * acc);

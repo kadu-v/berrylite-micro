@@ -22,7 +22,7 @@ std = []
 
 [dependencies]
 libm = "*"
-image = "*"
+min_max_traits = "*"
 
 
 [dependencies.num-traits]

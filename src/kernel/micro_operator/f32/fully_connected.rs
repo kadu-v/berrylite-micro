@@ -55,13 +55,13 @@ impl OpFullyConnected {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0];
-        let input = tensors[idx_input as usize]._b_tensor()?.borrow();
+        let input = tensors[idx_input as usize]._t()?.borrow();
 
         let idx_filter = node.inputs[1];
-        let filter = tensors[idx_filter as usize]._b_tensor()?.borrow();
+        let filter = tensors[idx_filter as usize]._t()?.borrow();
 
         let idx_output = node.outputs[0];
-        let mut output = tensors[idx_output as usize]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output as usize]._t()?.borrow_mut();
         let output_data_size = output.data.len();
 
         let idx_bias = node.inputs[2];
@@ -81,7 +81,7 @@ impl OpFullyConnected {
         let output_depth = filter.dims[filter.dims.len() - 2];
         let accum_depth = filter.dims[filter.dims.len() - 1];
         if idx_bias >= 0 {
-            let bias = tensors[idx_bias as usize]._b_tensor()?.borrow();
+            let bias = tensors[idx_bias as usize]._t()?.borrow();
             Self::kernel(
                 input.data,
                 Some(&bias.data),

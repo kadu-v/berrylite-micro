@@ -9,6 +9,7 @@ pub trait ArenaAllocator {
 
 #[derive(Debug)]
 pub struct BumpArenaAllocator {
+    #[allow(dead_code)]
     arena_start: usize,
     arena_end: usize,
     arena_size: usize,

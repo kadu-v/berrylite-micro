@@ -3,7 +3,10 @@ use flatbuffers::{ForwardsUOffset, Vector};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_erros::{
+    BLiteError::{self, *},
+    Result,
+};
 use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
@@ -15,10 +18,12 @@ use crate::tflite_schema_generated::tflite::{
 };
 use core::cell::RefCell;
 use core::fmt::Debug;
+use core::ptr::addr_of;
 use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
+
 /*-----------------------------------------------------------------------------*/
 /* Type synonyms for TFLiteGraph                                               */
 /*-----------------------------------------------------------------------------*/
@@ -176,7 +181,6 @@ where
             }
         };
 
-        //
         if let Some(subgraph_tensors) = subgraph.tensors() {
             for (i, tensor) in subgraph_tensors.iter().enumerate() {
                 let quant_params = tensor.quantization();
@@ -190,11 +194,13 @@ where
                         BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
                     };
                     tensors[i] = I32Tensor(RefCell::new(tflite_tensor));
-                } else {
+                } else if ttype == TensorType::INT8 || ttype == TensorType::FLOAT32 {
                     let tflite_tensor = unsafe {
                         BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
                     };
                     tensors[i] = BTensor(RefCell::new(tflite_tensor));
+                } else {
+                    return Err(BLiteError::FailedToAllocateMemory);
                 }
             }
             Ok(tensors)

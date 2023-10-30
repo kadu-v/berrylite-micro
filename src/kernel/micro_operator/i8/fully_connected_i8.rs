@@ -47,7 +47,7 @@ impl OpFullyConnectedInt8 {
         let input_idx = op.inputs().unwrap().get(0) as usize;
         let (input_scale, input_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[input_idx]._b_tensor()?.borrow().quant_params
+                tensors[input_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
@@ -57,7 +57,7 @@ impl OpFullyConnectedInt8 {
         let filter_idx = op.inputs().unwrap().get(1) as usize;
         let (filter_scale, filter_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[filter_idx]._b_tensor()?.borrow().quant_params
+                tensors[filter_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
@@ -66,10 +66,8 @@ impl OpFullyConnectedInt8 {
 
         let bias_idx = op.inputs().unwrap().get(2);
         let bias_scale = if bias_idx >= 0 {
-            let Some(BLiteQuantizationParams { scale, .. }) = tensors[bias_idx as usize]
-                ._i32_tensor()?
-                .borrow()
-                .quant_params
+            let Some(BLiteQuantizationParams { scale, .. }) =
+                tensors[bias_idx as usize]._i32()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
@@ -81,14 +79,18 @@ impl OpFullyConnectedInt8 {
         let output_idx = op.outputs().unwrap().get(0) as usize;
         let (output_scale, output_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[output_idx]._b_tensor()?.borrow().quant_params
+                tensors[output_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
         };
         let (fused_activation_min, fused_activation_max) =
-            calculate_fused_activation_range_quantized(output_scale, output_zero_point, op_code)?;
+            calculate_fused_activation_range_quantized::<T>(
+                output_scale,
+                output_zero_point,
+                op_code,
+            )?;
 
         //This computations is corresponded to CalculateOpDataFullyConnected
         let real_multiplier = get_quantized_convolution_multiplier(
@@ -136,13 +138,13 @@ impl OpFullyConnectedInt8 {
         };
 
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
 
         let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter]._b_tensor()?.borrow();
+        let filter = tensors[idx_filter]._t()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
 
         let idx_bias = node.inputs[2];
 
@@ -151,7 +153,7 @@ impl OpFullyConnectedInt8 {
         let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
 
         if idx_bias >= 0 {
-            let bias = tensors[idx_bias as usize]._i32_tensor()?.borrow();
+            let bias = tensors[idx_bias as usize]._i32()?.borrow();
 
             Self::kernel(
                 input.data,
@@ -213,9 +215,9 @@ impl OpFullyConnectedInt8 {
                 let mut total = 0;
                 for acc_d in 0usize..accum_depth {
                     let input_val =
-                        AsPrimitive::<i8>::as_(input_data[batch * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<i32>::as_(input_data[batch * accum_depth + acc_d]);
                     let filter_val =
-                        AsPrimitive::<i8>::as_(filter_data[out_d * accum_depth + acc_d]) as i32;
+                        AsPrimitive::<i32>::as_(filter_data[out_d * accum_depth + acc_d]);
                     total += (input_val + input_offset) * (filter_val + filter_offset);
                 }
 
@@ -229,8 +231,7 @@ impl OpFullyConnectedInt8 {
                 total = max(total, fused_activation_min);
                 total = min(total, fused_activation_max);
 
-                output_data[batch * output_depth + out_d] =
-                    FromPrimitive::from_i8(total as i8).unwrap();
+                output_data[batch * output_depth + out_d] = FromPrimitive::from_i32(total).unwrap();
             }
         }
         Ok(())
