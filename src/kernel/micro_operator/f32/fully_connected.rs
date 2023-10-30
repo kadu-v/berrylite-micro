@@ -1,5 +1,6 @@
 use crate::kernel::micro_activation::get_activation;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::utils::types::flat_skip_dims;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
@@ -75,10 +76,10 @@ impl OpFullyConnected {
         };
 
         // TODO:
-        let batches = 1;
+
+        let batches = flat_skip_dims(output.dims, output.dims.len() - 1);
         let output_depth = filter.dims[filter.dims.len() - 2];
         let accum_depth = filter.dims[filter.dims.len() - 1];
-
         if idx_bias >= 0 {
             let bias = tensors[idx_bias as usize]._b_tensor()?.borrow();
             Self::kernel(
@@ -107,6 +108,7 @@ impl OpFullyConnected {
         }
     }
 
+    #[inline(always)]
     pub fn kernel<T: ArrayElem<T>>(
         input_data: &[T],
         bias_data: Option<&[T]>,
@@ -125,8 +127,8 @@ impl OpFullyConnected {
                     total += input_data[batch * accum_depth as usize + acc_d]
                         * filter_data[out_d * accum_depth as usize + acc_d];
                 }
-                output_data[batch * output_depth as usize + out_d] = total;
 
+                output_data[batch * output_depth as usize + out_d] = total;
                 if let Some(bias_data) = bias_data {
                     let bias = bias_data[out_d];
                     output_data[batch * output_depth as usize + out_d] += bias;

@@ -15,9 +15,10 @@ kyewords = ["Tensorflow Lite", "no_std"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["no_std"]
+default = []
 # Use Rust std library
 no_std = []
+std = []
 
 [dependencies]
 libm = "*"
@@ -36,11 +37,12 @@ default-features = false
 
 
 [dev-dependencies]
-criterion = {version = "0.4", features = ["html_reports"]}
+criterion = { version = "0.4", features = ["html_reports"] }
+
+[profile.test]
+features = ["std"]
 
 
 [[bench]]
 name = "mobilenet_v1"
 harness = false
-
-

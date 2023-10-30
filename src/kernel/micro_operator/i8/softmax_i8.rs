@@ -6,7 +6,6 @@ use crate::kernel::utils::quantization::{dequantize, quantize};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::*;
 use crate::micro_erros::BLiteError::{self, NotFoundOption};
 use crate::micro_erros::Result;
 use crate::micro_node::BLiteNode;

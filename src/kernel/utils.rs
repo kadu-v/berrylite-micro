@@ -1,6 +1,10 @@
 pub mod fixed_point;
 pub mod padding;
 pub mod quantization;
+pub mod types;
+
+#[cfg(test)]
+pub mod testing;
 
 use crate::micro_erros::Result;
 use quantization::quantize_multiplier;

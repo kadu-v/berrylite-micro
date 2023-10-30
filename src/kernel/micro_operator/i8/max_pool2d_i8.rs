@@ -1,6 +1,6 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel::micro_activation::{calculate_fused_activation_range_quantized, get_activation};
+use crate::kernel::micro_activation::calculate_fused_activation_range_quantized;
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption,
     BLiteBuiltinOption::{NotInitialize, QuantizedMaxPool2DOptions},

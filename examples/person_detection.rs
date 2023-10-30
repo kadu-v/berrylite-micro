@@ -1,12 +1,7 @@
-use berrylite::kernel::micro_operator::f32::{
-    conv2d::OpConv2D, depthwise_conv2d::OpDepthWiseConv2D, fully_connected::OpFullyConnected,
-    max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
-};
 use berrylite::kernel::micro_operator::i8::avg_pool2d_i8::OpAvgPool2DInt8;
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
 use berrylite::kernel::micro_operator::i8::depthwise_conv2d_i8::OpDepthWiseConv2DInt8;
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
-use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::kernel::micro_operator::i8::softmax_i8::OpSoftMaxInt8;
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
@@ -24,7 +19,7 @@ fn set_input(
     interpreter: &mut BLiteInterpreter<'_, i8>,
     input_h: usize,
     input_w: usize,
-    input_zero_point: i32,
+    _input_zero_point: i32,
     image: &[u8],
 ) {
     for h in 0..input_h {
@@ -51,7 +46,7 @@ fn predict(image: &[u8]) -> Result<usize> {
     op_resolver.add_op(OpDepthWiseConv2DInt8::depthwise_conv2d_int8())?;
 
     let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
-    let (input_scale, input_zero_point) = interpreter.get_input_quantization_params().unwrap();
+    let (_input_scale, input_zero_point) = interpreter.get_input_quantization_params().unwrap();
     let (output_scale, output_zero_point) = interpreter.get_output_quantization_params().unwrap();
     println!("{:?}", allocator.description());
 
@@ -81,7 +76,7 @@ fn main() {
 
     for y in 0..96 {
         for x in 0..96 {
-            let val = [(g_person_data[y * 96 + x] as i32 - 128) as u8];
+            let val = [(G_PERSON_DATA[y * 96 + x] as i32 - 128) as u8];
             // ピクセルデータをあらかじめ作っておいたグレースケールデータに書き込む
             gray_img.put_pixel(x as u32, y as u32, image::Luma(val));
         }
@@ -90,7 +85,7 @@ fn main() {
     // 画像をファイルとして保存する。エラーチェックも忘れずに
     gray_img.save("./gray.png").unwrap();
 
-    let images = [&g_person_data, &g_no_person_data];
+    let images = [&G_PERSON_DATA, &G_NO_PERSON_DATA];
     for i in 0..2 {
         let y_pred = match predict(images[i]) {
             Ok(y_pred) => y_pred,
@@ -104,7 +99,7 @@ fn main() {
     }
 }
 
-const g_no_person_data: [u8; 9216] = [
+const G_NO_PERSON_DATA: [u8; 9216] = [
     0xe7, 0xe7, 0xe5, 0xe1, 0xe5, 0xe8, 0xef, 0xf0, 0xf9, 0xfb, 0x02, 0x03, 0x0c, 0x12, 0x1c, 0x1f,
     0x30, 0x41, 0x53, 0x5d, 0x62, 0x71, 0x77, 0x66, 0x74, 0x74, 0x7f, 0x7f, 0x75, 0x7f, 0x64, 0xee,
     0xc8, 0xb4, 0xec, 0xec, 0x7f, 0x7f, 0x7f, 0x7e, 0x65, 0x79, 0x7a, 0x71, 0x65, 0x79, 0x73, 0x53,
@@ -683,7 +678,7 @@ const g_no_person_data: [u8; 9216] = [
     0x3c, 0x0e, 0xbd, 0xad, 0xac, 0xb0, 0xb4, 0xbb, 0xb9, 0xb8, 0xbc, 0xc4, 0xd6, 0xf8, 0x38, 0x51,
 ];
 
-const g_person_data: [u8; 9216] = [
+const G_PERSON_DATA: [u8; 9216] = [
     0x0b, 0x10, 0x12, 0x1d, 0x2d, 0x37, 0x44, 0x4e, 0x50, 0x4f, 0x5d, 0x68, 0x61, 0x7f, 0x64, 0x5d,
     0x7a, 0x66, 0xb8, 0xc2, 0xc4, 0xaf, 0xa6, 0xa8, 0xc2, 0xcd, 0xc7, 0xb9, 0x4b, 0x7f, 0x7f, 0x72,
     0x79, 0x6d, 0x7f, 0x68, 0x7f, 0x7f, 0x7f, 0x78, 0x60, 0x6e, 0x6d, 0x60, 0x53, 0x52, 0x49, 0x3c,

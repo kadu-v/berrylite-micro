@@ -1,10 +1,10 @@
 use num_traits::{AsPrimitive, FromPrimitive};
 
-use crate::kernel::micro_activation::{calculate_fused_activation_range_quantized, get_activation};
+use crate::kernel::micro_activation::calculate_fused_activation_range_quantized;
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::utils::calc_per_channel_multiplier_shift;
 use crate::kernel::utils::padding::compute_padding_height_width;
-use crate::kernel::utils::quantization::{multiply_by_quantized_multiplier, quantize_multiplier};
+use crate::kernel::utils::quantization::multiply_by_quantized_multiplier;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;

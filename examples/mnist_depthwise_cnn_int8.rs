@@ -1,7 +1,3 @@
-use berrylite::kernel::micro_operator::f32::{
-    conv2d::OpConv2D, depthwise_conv2d::OpDepthWiseConv2D, fully_connected::OpFullyConnected,
-    max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
-};
 use berrylite::kernel::micro_operator::i8::avg_pool2d_i8::OpAvgPool2DInt8;
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
 use berrylite::kernel::micro_operator::i8::depthwise_conv2d_i8::OpDepthWiseConv2DInt8;
@@ -873,7 +869,7 @@ const IMAGE5: [f32; 28 * 28] = [
     0.0,
 ];
 
-const IMAGE0: [f32; 784] = [
+const _IMAGE0: [f32; 784] = [
     0.0,
     0.0,
     0.0,
