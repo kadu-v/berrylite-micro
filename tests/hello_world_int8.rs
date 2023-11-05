@@ -37,9 +37,8 @@ fn predict(input: f32) -> Result<f32> {
 }
 
 #[test]
-fn main() {
+fn test_hello_world_int8() {
     let delta = 0.02;
-    // let inputs = [-96, -63, -34, 0];
     let inputs = [0.77f32, 1.57, 2.3, 3.14];
     let expected_outputs = inputs
         .clone()

@@ -16,9 +16,7 @@ kyewords = ["Tensorflow Lite", "no_std"]
 
 [features]
 default = []
-# Use Rust std library
 no_std = []
-std = []
 
 [dependencies]
 libm = "*"
