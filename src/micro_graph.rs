@@ -18,7 +18,6 @@ use crate::tflite_schema_generated::tflite::{
 };
 use core::cell::RefCell;
 use core::fmt::Debug;
-use core::ptr::addr_of;
 use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,

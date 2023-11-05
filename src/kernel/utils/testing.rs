@@ -1,4 +1,4 @@
-use num_traits::{AsPrimitive, FromPrimitive};
+use num_traits::FromPrimitive;
 
 use crate::micro_array::ArrayElem;
 
