@@ -6,4 +6,4 @@ pub mod reshape;
 pub mod softmax;
 
 #[cfg(test)]
-mod test_fully_connected;
+mod fully_connected_test;
