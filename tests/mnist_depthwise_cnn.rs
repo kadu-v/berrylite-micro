@@ -1,17 +1,17 @@
 use berrylite::kernel::micro_operator::f32::{
-    conv2d::OpConv2D, fully_connected::OpFullyConnected, max_pool2d::OpMaxPool2D,
-    reshape::OpReshape, softmax::OpSoftMax,
+    conv2d::OpConv2D, depthwise_conv2d::OpDepthWiseConv2D, fully_connected::OpFullyConnected,
+    max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
 };
-use berrylite::micro_allocator::BumpArenaAllocator;
+use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
 use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use image::{ImageBuffer, Luma};
 
-const BUFFER: &[u8; 377200] = include_bytes!("../models/mnist_cnn.tflite");
+const BUFFER: &[u8; 419572] = include_bytes!("../models/mnist_depthwise_cnn.tflite");
 
-const ARENA_SIZE: usize = 160 * 1024;
+const ARENA_SIZE: usize = 210 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
@@ -32,14 +32,17 @@ fn predict(input: &Vec<u8>) -> Result<usize> {
 
     let mut allocator = unsafe { BumpArenaAllocator::new(&mut ARENA) };
 
-    let mut op_resolver = BLiteOpResolver::<5, f32, _>::new();
+    let mut op_resolver = BLiteOpResolver::<6, f32, _>::new();
     op_resolver.add_op(OpFullyConnected::fully_connected())?;
     op_resolver.add_op(OpReshape::reshape())?;
     op_resolver.add_op(OpConv2D::conv2d())?;
     op_resolver.add_op(OpMaxPool2D::max_pool2d())?;
     op_resolver.add_op(OpSoftMax::softmax())?;
+    op_resolver.add_op(OpDepthWiseConv2D::depthwise_conv2d())?;
 
     let mut interpreter = BLiteInterpreter::new(&mut allocator, &op_resolver, &model)?;
+
+    println!("{:?}", allocator.description());
 
     set_input(&mut interpreter, 28, 28, input);
     interpreter.invoke()?;
@@ -69,7 +72,7 @@ fn make_vec_from_image(img: &ImageBuffer<Luma<u8>, Vec<u8>>) -> Vec<u8> {
 }
 
 #[test]
-fn test_mnist_cnn() {
+fn test_mnist_depthwise_cnn() {
     let inputs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     for expected in inputs {
