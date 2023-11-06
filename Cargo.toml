@@ -4,13 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["kazuki ikemori (kadu-v)"]
 license = "MIT OR Apache-2.0"
-descritpion = """
-Runtime for Tensorflow Lite Microcontroller written in Rust
-"""
 readme = "README.md"
 documentation = "..."
 repository = "https://github.com/nefrock/embeddedsw-rs"
-kyewords = ["Tensorflow Lite", "no_std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -19,18 +15,18 @@ default = []
 no_std = []
 
 [dependencies]
-libm = "*"
-min_max_traits = "*"
+libm = "0.2.7"
+min_max_traits = "0.1.0"
 
 
 [dependencies.num-traits]
-version = "*"
+version = "0.2.16"
 default-features = false
 features = ["libm"]
 
 
 [dependencies.flatbuffers]
-version = "*"
+version = "23.5.26"
 default-features = false
 
 
@@ -38,9 +34,6 @@ default-features = false
 criterion = { version = "0.4", features = ["html_reports"] }
 image = "*"
 float_eq = "1"
-
-[profile.test]
-features = ["std"]
 
 
 [[bench]]

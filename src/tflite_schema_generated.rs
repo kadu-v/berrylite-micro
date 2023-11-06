@@ -2,10 +2,13 @@
 
 // @generated
 
+#[allow(unused_imports)]
 use core::cmp::Ordering;
+#[allow(unused_imports)]
 use core::mem;
 
 extern crate flatbuffers;
+#[allow(unused_imports)]
 use self::flatbuffers::{EndianScalar, Follow};
 
 #[allow(unused_imports, dead_code)]
