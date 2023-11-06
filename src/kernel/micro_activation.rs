@@ -2,7 +2,7 @@ pub mod relu;
 
 use crate::kernel::utils::quantization::quantize;
 use crate::micro_array::ArrayElem;
-use crate::micro_erros::{BLiteError, Result};
+use crate::micro_errors::{BLiteError, Result};
 use num_traits::AsPrimitive;
 use relu::relu;
 

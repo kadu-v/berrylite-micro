@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use crate::kernel::micro_operator::BLiteOperator;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
-use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_errors::{BLiteError::*, Result};
 
 #[derive(Debug, Clone)]
 pub struct BLiteOpResolver<'a, const N: usize, T, S>

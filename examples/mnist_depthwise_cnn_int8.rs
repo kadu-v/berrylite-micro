@@ -6,7 +6,7 @@ use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::kernel::micro_operator::i8::softmax_i8::OpSoftMaxInt8;
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;

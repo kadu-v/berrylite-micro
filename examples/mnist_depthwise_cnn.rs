@@ -3,7 +3,7 @@ use berrylite::kernel::micro_operator::f32::{
     max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
 };
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;

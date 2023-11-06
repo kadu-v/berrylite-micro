@@ -1,6 +1,6 @@
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
-use crate::micro_erros::Result;
+use crate::micro_errors::Result;
 use crate::micro_graph::BLiteGraph;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::tflite_schema_generated::tflite::Model;

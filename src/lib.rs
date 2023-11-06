@@ -6,7 +6,7 @@ pub mod kernel;
 pub mod micro_allocator;
 pub mod micro_array;
 pub mod micro_context;
-pub mod micro_erros;
+pub mod micro_errors;
 pub mod micro_graph;
 pub mod micro_interpreter;
 pub mod micro_node;

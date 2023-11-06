@@ -4,9 +4,9 @@ use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOptio
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::NotFoundOption;
-use crate::micro_erros::BLiteError::*;
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::NotFoundOption;
+use crate::micro_errors::BLiteError::*;
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;

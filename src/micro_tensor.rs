@@ -1,5 +1,5 @@
 use crate::micro_array::{ArrayElem, BLiteArray};
-use crate::micro_erros::{BLiteError, Result};
+use crate::micro_errors::{BLiteError, Result};
 use core::cell::RefCell;
 
 // pub type BLiteTensor<'a, T> = RefCell<BLiteArray<'a, T>>;

@@ -3,7 +3,7 @@ pub mod i8;
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
-use crate::micro_erros::Result;
+use crate::micro_errors::Result;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;

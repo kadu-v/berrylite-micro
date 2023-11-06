@@ -8,8 +8,8 @@ use crate::kernel::utils::quantization::{
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::{self, *};
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::{self, *};
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;

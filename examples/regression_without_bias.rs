@@ -1,7 +1,7 @@
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_array::ArrayElem;
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;

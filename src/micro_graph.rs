@@ -3,7 +3,7 @@ use flatbuffers::{ForwardsUOffset, Vector};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::{
+use crate::micro_errors::{
     BLiteError::{self, *},
     Result,
 };
@@ -199,7 +199,7 @@ where
                     };
                     tensors[i] = BTensor(RefCell::new(tflite_tensor));
                 } else {
-                    return Err(BLiteError::FailedToAllocateMemory);
+                    return Err(BLiteError::InCompatibleType);
                 }
             }
             Ok(tensors)

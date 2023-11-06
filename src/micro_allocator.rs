@@ -1,4 +1,4 @@
-use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_errors::{BLiteError::*, Result};
 
 pub trait ArenaAllocator {
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Result<*mut u8>;

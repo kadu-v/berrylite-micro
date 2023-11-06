@@ -3,7 +3,7 @@ use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedI
 use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_erros::{BLiteError, Result};
+use berrylite::micro_errors::{BLiteError, Result};
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;

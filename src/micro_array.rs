@@ -2,7 +2,7 @@ use flatbuffers::Vector;
 use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_errors::{BLiteError::*, Result};
 use crate::micro_slice::{from_tflite_vector, from_tflite_vector_mut};
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
