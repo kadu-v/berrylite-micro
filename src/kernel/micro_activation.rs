@@ -21,7 +21,7 @@ pub fn calculate_fused_activation_range_quantized<T: ArrayElem<T>>(
     let mut activation_min = AsPrimitive::<i32>::as_(T::MIN);
     let mut activation_max = AsPrimitive::<i32>::as_(T::MAX);
 
-    // Note that the I only consider the type of tensor is int8
+    // Note that I only consider the type of tensor is int8
     match op {
         1 /* Relu */  => {
             let q_min = quantize(scale, zero_point, 0.0)?;
@@ -39,7 +39,7 @@ pub fn calculate_fused_activation_range_quantized<T: ArrayElem<T>>(
             activation_min = core::cmp::max(activation_min, q_min);
             activation_max = core::cmp::min(activation_max, q_max);
         },
-        0 /* None */ |4 /* Tanh */ | 5 /*SignBit */ | 6 /* Sigmoid */ => {/* do nothing */},
+        0 /* None */ | 4 /* Tanh */ | 5 /*SignBit */ | 6 /* Sigmoid */ => {/* do nothing */},
         _ => {
             return Err(BLiteError::NotFoundFusedActivation(op))
         }
