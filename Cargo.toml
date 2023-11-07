@@ -18,23 +18,19 @@ no_std = []
 libm = "0.2.7"
 min_max_traits = "0.1.0"
 
-
 [dependencies.num-traits]
 version = "0.2.16"
 default-features = false
 features = ["libm"]
 
-
 [dependencies.flatbuffers]
 version = "23.5.26"
 default-features = false
-
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["html_reports"] }
 image = "*"
 float_eq = "1"
-
 
 [[bench]]
 name = "mobilenet_v1"
