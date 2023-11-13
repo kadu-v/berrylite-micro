@@ -1,15 +1,29 @@
-pub mod relu;
-
 use crate::kernel::utils::quantization::quantize;
 use crate::micro_array::ArrayElem;
 use crate::micro_errors::{BLiteError, Result};
-use num_traits::AsPrimitive;
-use relu::relu;
+use num_traits::{AsPrimitive, FromPrimitive};
 
-pub fn get_activation<T: ArrayElem<T>>(op_code: i32) -> Option<fn(T) -> T> {
-    match op_code {
-        1 => Some(relu),
-        _ => None,
+#[inline(always)]
+pub fn activation_with_min_max<T: ArrayElem<T>>(x: T, activation_min: T, activation_max: T) -> T {
+    let mut ret = x;
+    if ret < activation_min {
+        ret = activation_min;
+    }
+
+    if ret > activation_max {
+        ret = activation_max;
+    }
+
+    return ret;
+}
+
+pub fn calculate_fused_activation_range<T: ArrayElem<T>>(
+    op: i32,
+) -> Result<(T /* activtion_min */, T /* activation_max */)> {
+    match op {
+        0 => Ok((T::MIN, T::MAX)),
+        1 => Ok((FromPrimitive::from_f32(0.).unwrap(), T::MAX)),
+        _ => Err(BLiteError::NotFoundFusedActivation(op)),
     }
 }
 

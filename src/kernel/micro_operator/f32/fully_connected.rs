@@ -1,5 +1,6 @@
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{activation_with_min_max, calculate_fused_activation_range};
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::micro_operator::BLiteOperator;
 use crate::kernel::utils::types::flat_skip_dims;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
@@ -10,9 +11,6 @@ use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
-use core::fmt::Debug;
-
-use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpFullyConnected {}
@@ -37,10 +35,12 @@ impl OpFullyConnected {
         if let Some(builtin_option) = builtin_option {
             op_code = builtin_option.fused_activation_function().0 as i32;
         }
-        let activation = get_activation::<T>(op_code);
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range(op_code)?;
         Ok(BLiteBuiltinOption::FullyConnectedOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
         })
     }
 
@@ -62,21 +62,19 @@ impl OpFullyConnected {
 
         let idx_output = node.outputs[0];
         let mut output = tensors[idx_output as usize]._t()?.borrow_mut();
-        let output_data_size = output.data.len();
 
         let idx_bias = node.inputs[2];
 
-        let activation = match builtin_option {
-            FullyConnectedOptions {
-                op_code: _,
-                activation,
-            } => activation,
-            NotInitialize => return Err(NotInitializeActivation),
-            _ => return Err(NotCompatibleOption),
+        let FullyConnectedOptions {
+            op_code: _,
+            fused_activation_min,
+            fused_activation_max,
+        } = builtin_option
+        else {
+            return Err(NotInitializeActivation);
         };
 
         // TODO:
-
         let batches = flat_skip_dims(output.dims, output.dims.len() - 1);
         let output_depth = filter.dims[filter.dims.len() - 2];
         let accum_depth = filter.dims[filter.dims.len() - 1];
@@ -88,10 +86,10 @@ impl OpFullyConnected {
                 filter.data,
                 output.data,
                 batches,
-                output_data_size,
                 output_depth,
                 accum_depth,
-                activation,
+                fused_activation_min,
+                fused_activation_max,
             )
         } else {
             Self::kernel(
@@ -100,10 +98,10 @@ impl OpFullyConnected {
                 filter.data,
                 output.data,
                 batches,
-                output_data_size,
                 output_depth,
                 accum_depth,
-                activation,
+                fused_activation_min,
+                fused_activation_max,
             )
         }
     }
@@ -115,10 +113,10 @@ impl OpFullyConnected {
         filter_data: &[T],
         output_data: &mut [T],
         batches: i32,
-        output_data_size: usize,
         output_depth: i32,
         accum_depth: i32,
-        activation: Option<fn(T) -> T>,
+        fused_activation_min: T,
+        fused_activation_max: T,
     ) -> Result<()> {
         for batch in 0..batches as usize {
             for out_d in 0..output_depth as usize {
@@ -128,16 +126,13 @@ impl OpFullyConnected {
                         * filter_data[out_d * accum_depth as usize + acc_d];
                 }
 
-                output_data[batch * output_depth as usize + out_d] = total;
                 if let Some(bias_data) = bias_data {
                     let bias = bias_data[out_d];
-                    output_data[batch * output_depth as usize + out_d] += bias;
+                    total += bias;
                 }
-            }
-        }
-        if let Some(activation) = activation {
-            for i in 0..output_data_size {
-                output_data[i] = activation(output_data[i]);
+
+                total = activation_with_min_max(total, fused_activation_min, fused_activation_max);
+                output_data[batch * output_depth as usize + out_d] = total;
             }
         }
 

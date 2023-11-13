@@ -6,11 +6,13 @@ use crate::micro_array::ArrayElem;
 pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     FullyConnectedOptions {
         op_code: i32,
-        activation: Option<fn(T) -> T>,
+        fused_activation_min: T,
+        fused_activation_max: T,
     },
     Conv2DOptions {
         op_code: i32, // activation operator code
-        activation: Option<fn(T) -> T>,
+        fused_activation_min: T,
+        fused_activation_max: T,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,
         padding_h: i32,
@@ -23,7 +25,8 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     },
     DepthWiseConv2DOptions {
         op_code: i32,
-        activation: Option<fn(T) -> T>,
+        fused_activation_min: T,
+        fused_activation_max: T,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,
         padding_h: i32,
@@ -37,7 +40,8 @@ pub enum BLiteBuiltinOption<'a, T: Debug + ArrayElem<T>> {
     },
     MaxPool2DOptions {
         op_code: i32,
-        activation: Option<fn(T) -> T>,
+        fused_activation_min: T,
+        fused_activation_max: T,
         padding: usize, // 0: same, 1: valid
         padding_w: i32,
         padding_h: i32,

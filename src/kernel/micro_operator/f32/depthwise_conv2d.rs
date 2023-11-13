@@ -1,4 +1,4 @@
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{activation_with_min_max, calculate_fused_activation_range};
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::micro_allocator::ArenaAllocator;
@@ -37,9 +37,9 @@ impl OpDepthWiseConv2D {
             return Err(NotFoundOption);
         };
         let op_code = builtin_option.fused_activation_function().0 as i32;
-
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range(op_code)?;
         let padding = builtin_option.padding().0 as usize;
-        let activation = get_activation::<T>(op_code);
         let stride_w = builtin_option.stride_w();
         let stride_h = builtin_option.stride_h();
         let depth_multiplier = builtin_option.depth_multiplier();
@@ -74,7 +74,8 @@ impl OpDepthWiseConv2D {
             );
         Ok(BLiteBuiltinOption::DepthWiseConv2DOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding,
             padding_w,
             padding_h,
@@ -120,11 +121,12 @@ impl OpDepthWiseConv2D {
         let output_depth = output.dims[3];
 
         // TODO: What is this?
-        let batchs = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
+        let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
 
         let DepthWiseConv2DOptions {
             op_code: _,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding: _,
             stride_w,
             stride_h,
@@ -139,8 +141,62 @@ impl OpDepthWiseConv2D {
         else {
             return Err(NotCompatibleOption);
         };
+        Self::kernel(
+            input.data,
+            filter.data,
+            bias.data,
+            output.data,
+            input_height,
+            input_width,
+            input_depth,
+            filter_height,
+            filter_width,
+            filter_input_depth,
+            output_height,
+            output_width,
+            output_depth,
+            stride_w,
+            stride_h,
+            dilation_w_factor,
+            dilation_h_factor,
+            padding_w,
+            padding_h,
+            depth_multiplier,
+            batches,
+            fused_activation_min,
+            fused_activation_max,
+        )
+    }
 
-        for batch in 0..batchs {
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        filter_data: &[T],
+        bias_data: &[T],
+        output_data: &mut [T],
+        //
+        input_height: i32,
+        input_width: i32,
+        input_depth: i32,
+        filter_height: i32,
+        filter_width: i32,
+        filter_input_depth: i32,
+        output_height: i32,
+        output_width: i32,
+        output_depth: i32,
+        //
+        stride_w: i32,
+        stride_h: i32,
+        dilation_w_factor: i32,
+        dilation_h_factor: i32,
+        padding_w: i32,
+        padding_h: i32,
+        depth_multiplier: i32,
+        batches: i32,
+        fused_activation_min: T,
+        fused_activation_max: T,
+    ) -> Result<()> {
+        for batch in 0..batches {
             for out_y in 0..output_height {
                 for out_x in 0..output_width {
                     for in_channel in 0..input_depth {
@@ -167,7 +223,7 @@ impl OpDepthWiseConv2D {
                                             in_x,
                                             in_channel,
                                         );
-                                        let input_v = input.data[input_v_idx as usize];
+                                        let input_v = input_data[input_v_idx as usize];
                                         let filter_v_idx = Self::offset(
                                             filter_height,
                                             filter_width,
@@ -177,12 +233,12 @@ impl OpDepthWiseConv2D {
                                             filter_x,
                                             out_channel,
                                         );
-                                        let filter_v = filter.data[filter_v_idx as usize];
+                                        let filter_v = filter_data[filter_v_idx as usize];
                                         total += input_v * filter_v;
                                     }
                                 }
                             }
-                            let bias_v = bias.data[out_channel as usize];
+                            let bias_v = bias_data[out_channel as usize];
                             let output_v_idx = Self::offset(
                                 output_height,
                                 output_width,
@@ -193,11 +249,13 @@ impl OpDepthWiseConv2D {
                                 out_channel,
                             );
 
-                            if let Some(activation) = activation {
-                                output.data[output_v_idx as usize] = activation(total + bias_v);
-                            } else {
-                                output.data[output_v_idx as usize] = total + bias_v;
-                            }
+                            total += bias_v;
+                            total = activation_with_min_max(
+                                total,
+                                fused_activation_min,
+                                fused_activation_max,
+                            );
+                            output_data[output_v_idx as usize] = total;
                         }
                     }
                 }

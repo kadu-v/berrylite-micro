@@ -35,10 +35,10 @@ fn mk_test_case(input: Tensor<f32>, filter: Tensor<f32>, expected: Tensor<f32>) 
         &filter.data,
         &mut output_data,
         batches,
-        output_data_size,
         output_depth,
         accum_depth,
-        None,
+        f32::MIN,
+        f32::MAX,
     )
     .expect("fail to execute fully_connected kernel");
     assert_eq!(output_data, expected.data);

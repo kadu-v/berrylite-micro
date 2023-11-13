@@ -229,7 +229,8 @@ impl OpDepthWiseConv2DInt8 {
         )
     }
 
-    fn kernel<T: ArrayElem<T>>(
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
         input_data: &[T],
         filter_data: &[T],
         bias_data: &[i32],

@@ -1,6 +1,6 @@
 use num_traits::FromPrimitive;
 
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{activation_with_min_max, calculate_fused_activation_range};
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption,
     BLiteBuiltinOption::{MaxPool2DOptions, NotInitialize},
@@ -42,7 +42,8 @@ impl OpMaxPool2D {
             return Err(NotFoundOption);
         };
         let op_code = builtin_option.fused_activation_function().0 as i32;
-        let activation = get_activation::<T>(op_code);
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range(op_code)?;
         let padding = builtin_option.padding().0 as usize;
         let stride_w = builtin_option.stride_w();
         let stride_h = builtin_option.stride_h();
@@ -65,7 +66,8 @@ impl OpMaxPool2D {
             );
         Ok(BLiteBuiltinOption::MaxPool2DOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding,
             stride_w,
             stride_h,
@@ -100,10 +102,11 @@ impl OpMaxPool2D {
         let output_width = output.dims[2];
         let output_depth = output.dims[3];
 
-        let batchs = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
+        let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
         let MaxPool2DOptions {
             op_code: _,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding: _,
             stride_w,
             stride_h,
@@ -117,8 +120,51 @@ impl OpMaxPool2D {
         else {
             return Err(NotCompatibleOption);
         };
+        Self::kernel(
+            input.data,
+            output.data,
+            input_height,
+            input_width,
+            input_depth,
+            output_height,
+            output_width,
+            output_depth,
+            stride_w,
+            stride_h,
+            filter_w,
+            filter_h,
+            padding_w,
+            padding_h,
+            batches,
+            fused_activation_min,
+            fused_activation_max,
+        )
+    }
 
-        for batch in 0..batchs {
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        output_data: &mut [T],
+        //
+        input_height: i32,
+        input_width: i32,
+        input_depth: i32,
+        output_height: i32,
+        output_width: i32,
+        output_depth: i32,
+        //
+        stride_w: i32,
+        stride_h: i32,
+        filter_w: i32,
+        filter_h: i32,
+        padding_w: i32,
+        padding_h: i32,
+        //
+        batches: i32,
+        fused_activation_min: T,
+        fused_activation_max: T,
+    ) -> Result<()> {
+        for batch in 0..batches {
             for out_y in 0..output_height {
                 for out_x in 0..output_width {
                     for channel in 0..output_depth {
@@ -142,7 +188,7 @@ impl OpMaxPool2D {
                                     in_x,
                                     channel,
                                 );
-                                let input_v = input.data[input_v_idx as usize];
+                                let input_v = input_data[input_v_idx as usize];
                                 if input_v > max {
                                     max = input_v;
                                 }
@@ -157,11 +203,13 @@ impl OpMaxPool2D {
                             out_x,
                             channel,
                         );
-                        if let Some(activation) = activation {
-                            output.data[output_v_idx as usize] = activation(max);
-                        } else {
-                            output.data[output_v_idx as usize] = max;
-                        }
+
+                        max = activation_with_min_max(
+                            max,
+                            fused_activation_min,
+                            fused_activation_max,
+                        );
+                        output_data[output_v_idx as usize] = max;
                     }
                 }
             }

@@ -154,6 +154,7 @@ impl OpMaxPool2DInt8 {
         )
     }
 
+    #[inline(always)]
     pub fn kernel<T: ArrayElem<T>>(
         input_data: &[T],
         output_data: &mut [T],
