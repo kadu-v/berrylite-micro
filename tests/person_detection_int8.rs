@@ -9,7 +9,7 @@ use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use image::{ImageBuffer, Luma};
 
-const BUFFER: &[u8; 377200] = include_bytes!("../resources/models/mnist_cnn.tflite");
+const BUFFER: &[u8; 300568] = include_bytes!("../resources/models/person_detect.tflite");
 
 const ARENA_SIZE: usize = 160 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
@@ -69,7 +69,7 @@ fn make_vec_from_image(img: &ImageBuffer<Luma<u8>, Vec<u8>>) -> Vec<u8> {
 }
 
 #[test]
-fn test_mnist_cnn() {
+fn test_person_detection_int8() {
     let inputs = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
     for expected in inputs {

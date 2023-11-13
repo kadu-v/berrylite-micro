@@ -11,8 +11,9 @@ use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
-const BUFFER: &[u8; 43528] =
-    include_bytes!("../models/mnist_depthwise_cnn_avg_pool_depth_multiplier_1_2_3_int8.tflite");
+const BUFFER: &[u8; 43528] = include_bytes!(
+    "../resources/models/mnist_depthwise_cnn_avg_pool_depth_multiplier_1_2_3_int8.tflite"
+);
 
 const ARENA_SIZE: usize = 210 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

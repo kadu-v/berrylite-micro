@@ -9,7 +9,7 @@ use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
-const BUFFER: &[u8; 3156] = include_bytes!("../models/simple_conv_sin.tflite");
+const BUFFER: &[u8; 3156] = include_bytes!("../resources/models/simple_conv_sin.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

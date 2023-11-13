@@ -11,7 +11,7 @@ use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
 const BUFFER: &[u8; 1364512] =
-    include_bytes!("../models/mobilenet_v1_0.50_192_quantized_1_default_1.tflite");
+    include_bytes!("../resources/models/mobilenet_v1_0.50_192_quantized_1_default_1.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

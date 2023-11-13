@@ -6,7 +6,7 @@ use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
-const BUFFER: &[u8; 3164] = include_bytes!("../models/hello_world_float.tflite");
+const BUFFER: &[u8; 3164] = include_bytes!("../resources/models/hello_world_float.tflite");
 
 const ARENA_SIZE: usize = 100 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

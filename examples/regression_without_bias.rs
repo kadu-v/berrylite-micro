@@ -16,7 +16,8 @@ use berrylite::tflite_schema_generated::tflite;
 // const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_2-1.tflite");
 
 //----not good----
-const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_1-2.tflite");
+const BUFFER: &[u8; 1440] =
+    include_bytes!("../resources/models/regression_without_bias_int8_1-2.tflite");
 // const BUFFER: &[u8; 1424] = include_bytes!("../models/regression_without_bias_int8_2layer.tflite");
 // const BUFFER: &[u8; 1488] = include_bytes!("../models/regression_without_bias_int8.tflite");
 // const BUFFER: &[u8; 1480] = include_bytes!("../models/regression_without_bias_10_1.tflite");
