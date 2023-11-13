@@ -1,4 +1,3 @@
-use berrylite::kernel::micro_operator::f32::depthwise_conv2d::OpDepthWiseConv2D;
 use berrylite::kernel::micro_operator::i8::avg_pool2d_i8::OpAvgPool2DInt8;
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
 use berrylite::kernel::micro_operator::i8::depthwise_conv2d_i8::OpDepthWiseConv2DInt8;
@@ -6,14 +5,14 @@ use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedI
 use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_erros::{BLiteError, Result};
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
 const BUFFER: &[u8; 8856] =
-    include_bytes!("../models/simple_depthwise_conv_avg_pool_relu6_int8.tflite");
+    include_bytes!("../resources/models/simple_depthwise_conv_avg_pool_relu6_int8.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

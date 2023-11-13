@@ -1,6 +1,6 @@
 use num_traits::FromPrimitive;
 
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{activation_with_min_max, calculate_fused_activation_range};
 use crate::kernel::micro_builtin_options::{
     BLiteBuiltinOption,
     BLiteBuiltinOption::{MaxPool2DOptions, NotInitialize},
@@ -9,8 +9,8 @@ use crate::kernel::utils::padding::compute_padding_height_width;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::*;
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::*;
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
@@ -42,7 +42,8 @@ impl OpMaxPool2D {
             return Err(NotFoundOption);
         };
         let op_code = builtin_option.fused_activation_function().0 as i32;
-        let activation = get_activation::<T>(op_code);
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range(op_code)?;
         let padding = builtin_option.padding().0 as usize;
         let stride_w = builtin_option.stride_w();
         let stride_h = builtin_option.stride_h();
@@ -50,12 +51,12 @@ impl OpMaxPool2D {
         let filter_h = builtin_option.filter_height();
 
         let input_idx = op.inputs().unwrap().get(0) as usize;
-        let input_h = tensors[input_idx]._b_tensor()?.borrow().dims[1];
-        let input_w = tensors[input_idx]._b_tensor()?.borrow().dims[2];
+        let input_h = tensors[input_idx]._t()?.borrow().dims[1];
+        let input_w = tensors[input_idx]._t()?.borrow().dims[2];
 
         let output_idx = op.outputs().unwrap().get(0) as usize;
-        let output_h = tensors[output_idx]._b_tensor()?.borrow().dims[1];
-        let output_w = tensors[output_idx]._b_tensor()?.borrow().dims[2];
+        let output_h = tensors[output_idx]._t()?.borrow().dims[1];
+        let output_w = tensors[output_idx]._t()?.borrow().dims[2];
 
         let (padding_w, padding_w_offset, padding_h, padding_h_offset) =
             compute_padding_height_width(
@@ -65,7 +66,8 @@ impl OpMaxPool2D {
             );
         Ok(BLiteBuiltinOption::MaxPool2DOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding,
             stride_w,
             stride_h,
@@ -89,21 +91,22 @@ impl OpMaxPool2D {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
         let input_height = input.dims[1];
         let input_width = input.dims[2];
         let input_depth = input.dims[3];
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
         let output_height = output.dims[1];
         let output_width = output.dims[2];
         let output_depth = output.dims[3];
 
-        let batchs = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
+        let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])
         let MaxPool2DOptions {
             op_code: _,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
             padding: _,
             stride_w,
             stride_h,
@@ -117,8 +120,51 @@ impl OpMaxPool2D {
         else {
             return Err(NotCompatibleOption);
         };
+        Self::kernel(
+            input.data,
+            output.data,
+            input_height,
+            input_width,
+            input_depth,
+            output_height,
+            output_width,
+            output_depth,
+            stride_w,
+            stride_h,
+            filter_w,
+            filter_h,
+            padding_w,
+            padding_h,
+            batches,
+            fused_activation_min,
+            fused_activation_max,
+        )
+    }
 
-        for batch in 0..batchs {
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        output_data: &mut [T],
+        //
+        input_height: i32,
+        input_width: i32,
+        input_depth: i32,
+        output_height: i32,
+        output_width: i32,
+        output_depth: i32,
+        //
+        stride_w: i32,
+        stride_h: i32,
+        filter_w: i32,
+        filter_h: i32,
+        padding_w: i32,
+        padding_h: i32,
+        //
+        batches: i32,
+        fused_activation_min: T,
+        fused_activation_max: T,
+    ) -> Result<()> {
+        for batch in 0..batches {
             for out_y in 0..output_height {
                 for out_x in 0..output_width {
                     for channel in 0..output_depth {
@@ -142,7 +188,7 @@ impl OpMaxPool2D {
                                     in_x,
                                     channel,
                                 );
-                                let input_v = input.data[input_v_idx as usize];
+                                let input_v = input_data[input_v_idx as usize];
                                 if input_v > max {
                                     max = input_v;
                                 }
@@ -157,11 +203,13 @@ impl OpMaxPool2D {
                             out_x,
                             channel,
                         );
-                        if let Some(activation) = activation {
-                            output.data[output_v_idx as usize] = activation(max);
-                        } else {
-                            output.data[output_v_idx as usize] = max;
-                        }
+
+                        max = activation_with_min_max(
+                            max,
+                            fused_activation_min,
+                            fused_activation_max,
+                        );
+                        output_data[output_v_idx as usize] = max;
                     }
                 }
             }

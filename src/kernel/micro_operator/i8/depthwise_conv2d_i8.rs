@@ -8,8 +8,8 @@ use crate::kernel::utils::quantization::multiply_by_quantized_multiplier;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::{self, *};
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::{self, *};
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_slice::alloc_array_mut;
@@ -52,11 +52,11 @@ impl OpDepthWiseConv2DInt8 {
         let dilation_h_factor = builtin_option.dilation_h_factor();
 
         let input_idx = op.inputs().unwrap().get(0) as usize;
-        let input_h = tensors[input_idx]._b_tensor()?.borrow().dims[1];
-        let input_w = tensors[input_idx]._b_tensor()?.borrow().dims[2];
+        let input_h = tensors[input_idx]._t()?.borrow().dims[1];
+        let input_w = tensors[input_idx]._t()?.borrow().dims[2];
         let (input_scale, input_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[input_idx]._b_tensor()?.borrow().quant_params
+                tensors[input_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
@@ -64,11 +64,11 @@ impl OpDepthWiseConv2DInt8 {
         };
 
         let filter_idx = op.inputs().unwrap().get(1) as usize;
-        let filter_h = tensors[filter_idx]._b_tensor()?.borrow().dims[1];
-        let filter_w = tensors[filter_idx]._b_tensor()?.borrow().dims[2];
+        let filter_h = tensors[filter_idx]._t()?.borrow().dims[1];
+        let filter_w = tensors[filter_idx]._t()?.borrow().dims[2];
         let (filter_scales, filter_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[filter_idx]._b_tensor()?.borrow().quant_params
+                tensors[filter_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
@@ -76,19 +76,23 @@ impl OpDepthWiseConv2DInt8 {
         };
 
         let output_idx = op.outputs().unwrap().get(0) as usize;
-        let output_h = tensors[output_idx]._b_tensor()?.borrow().dims[1];
-        let output_w = tensors[output_idx]._b_tensor()?.borrow().dims[2];
-        let output_ch = tensors[output_idx]._b_tensor()?.borrow().dims[3];
+        let output_h = tensors[output_idx]._t()?.borrow().dims[1];
+        let output_w = tensors[output_idx]._t()?.borrow().dims[2];
+        let output_ch = tensors[output_idx]._t()?.borrow().dims[3];
         let (output_scale, output_zero_point) = {
             let Some(BLiteQuantizationParams { scale, zero_point }) =
-                tensors[output_idx]._b_tensor()?.borrow().quant_params
+                tensors[output_idx]._t()?.borrow().quant_params
             else {
                 return Err(BLiteError::NotFoundQuantParams);
             };
             (scale[0], zero_point[0] as i32)
         };
         let (fused_activation_min, fused_activation_max) =
-            calculate_fused_activation_range_quantized(output_scale, output_zero_point, op_code)?;
+            calculate_fused_activation_range_quantized::<T>(
+                output_scale,
+                output_zero_point,
+                op_code,
+            )?;
 
         let (padding_w, padding_w_offset, padding_h, padding_h_offset) =
             compute_padding_height_width(
@@ -146,22 +150,22 @@ impl OpDepthWiseConv2DInt8 {
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
         let input_height = input.dims[1];
         let input_width = input.dims[2];
         let input_depth = input.dims[3];
 
         let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter]._b_tensor()?.borrow();
+        let filter = tensors[idx_filter]._t()?.borrow();
         let filter_height = filter.dims[1];
         let filter_width = filter.dims[2];
         let filter_depth = filter.dims[3];
 
         let idx_bias = node.inputs[2] as usize;
-        let bias = tensors[idx_bias]._i32_tensor()?.borrow();
+        let bias = tensors[idx_bias]._i32()?.borrow();
 
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
         let output_height = output.dims[1];
         let output_width = output.dims[2];
         let output_depth = output.dims[3];
@@ -225,7 +229,8 @@ impl OpDepthWiseConv2DInt8 {
         )
     }
 
-    fn kernel<T: ArrayElem<T>>(
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
         input_data: &[T],
         filter_data: &[T],
         bias_data: &[i32],
@@ -286,10 +291,9 @@ impl OpDepthWiseConv2DInt8 {
                                             in_x,
                                             in_channel,
                                         );
-                                        let input_v = AsPrimitive::<i8>::as_(
+                                        let input_v = AsPrimitive::<i32>::as_(
                                             input_data[input_v_idx as usize],
-                                        )
-                                            as i32;
+                                        );
                                         let filter_v_idx = Self::offset(
                                             filter_height,
                                             filter_width,
@@ -299,10 +303,9 @@ impl OpDepthWiseConv2DInt8 {
                                             filter_x,
                                             out_channel,
                                         );
-                                        let filter_v = AsPrimitive::<i8>::as_(
+                                        let filter_v = AsPrimitive::<i32>::as_(
                                             filter_data[filter_v_idx as usize],
-                                        )
-                                            as i32;
+                                        );
                                         total += filter_v * (input_v + input_offset);
                                     }
                                 }
@@ -328,7 +331,7 @@ impl OpDepthWiseConv2DInt8 {
                                 out_channel,
                             );
                             output_data[output_v_idx as usize] =
-                                FromPrimitive::from_i8(total as i8).unwrap();
+                                FromPrimitive::from_i32(total).unwrap();
                         }
                     }
                 }

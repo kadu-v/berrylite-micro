@@ -2,8 +2,8 @@ use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOptio
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::InCompatibleShape;
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::InCompatibleShape;
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
@@ -44,9 +44,9 @@ impl OpReshapeInt8 {
         _builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
         let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let input = tensors[idx_input]._t()?.borrow();
         let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let mut output = tensors[idx_output]._t()?.borrow_mut();
 
         // shape checking
         let input_elems = input.dims.iter().fold(1, |x, acc| x * acc);

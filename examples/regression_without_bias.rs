@@ -1,7 +1,7 @@
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
 use berrylite::micro_array::ArrayElem;
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
@@ -16,7 +16,8 @@ use berrylite::tflite_schema_generated::tflite;
 // const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_2-1.tflite");
 
 //----not good----
-const BUFFER: &[u8; 1440] = include_bytes!("../models/regression_without_bias_int8_1-2.tflite");
+const BUFFER: &[u8; 1440] =
+    include_bytes!("../resources/models/regression_without_bias_int8_1-2.tflite");
 // const BUFFER: &[u8; 1424] = include_bytes!("../models/regression_without_bias_int8_2layer.tflite");
 // const BUFFER: &[u8; 1488] = include_bytes!("../models/regression_without_bias_int8.tflite");
 // const BUFFER: &[u8; 1480] = include_bytes!("../models/regression_without_bias_10_1.tflite");

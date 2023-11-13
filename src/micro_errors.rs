@@ -22,6 +22,7 @@ pub enum BLiteError {
     NotFoundBuffers,
     NotFoundOperators,
     NotFoundOperatorCodes,
+    InCompatibleType,
 
     // micro operator resolver
     NotFoundOperator(i32),

@@ -1,5 +1,5 @@
-use crate::micro_erros::BLiteError::{self, NotMatchScale};
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::{self, NotMatchScale};
+use crate::micro_errors::Result;
 
 // FullyConnectedParamsQuantized: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected_common.cc#L34
 // OpDataFullyConnected: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected.h#L26
@@ -97,8 +97,8 @@ pub fn quantize(scale: f32, zero_point: i32, f: f32) -> Result<i32> {
     Ok(q)
 }
 
-pub fn dequantize(scale: f32, zero_point: i32, q: i8) -> Result<f32> {
-    let f = scale * (q as i32 - zero_point) as f32;
+pub fn dequantize(scale: f32, zero_point: i32, q: i32) -> Result<f32> {
+    let f = scale * (q - zero_point) as f32;
     Ok(f)
 }
 

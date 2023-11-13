@@ -3,7 +3,7 @@ use core::fmt::Debug;
 use crate::kernel::micro_builtin_options::BLiteBuiltinOption;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::Result;
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_tensor::BLiteTensor;
 

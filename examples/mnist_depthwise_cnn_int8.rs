@@ -1,7 +1,3 @@
-use berrylite::kernel::micro_operator::f32::{
-    conv2d::OpConv2D, depthwise_conv2d::OpDepthWiseConv2D, fully_connected::OpFullyConnected,
-    max_pool2d::OpMaxPool2D, reshape::OpReshape, softmax::OpSoftMax,
-};
 use berrylite::kernel::micro_operator::i8::avg_pool2d_i8::OpAvgPool2DInt8;
 use berrylite::kernel::micro_operator::i8::conv2d_i8::OpConv2DInt8;
 use berrylite::kernel::micro_operator::i8::depthwise_conv2d_i8::OpDepthWiseConv2DInt8;
@@ -10,13 +6,14 @@ use berrylite::kernel::micro_operator::i8::max_pool2d_i8::OpMaxPool2DInt8;
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::kernel::micro_operator::i8::softmax_i8::OpSoftMaxInt8;
 use berrylite::micro_allocator::{ArenaAllocator, BumpArenaAllocator};
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
-const BUFFER: &[u8; 43528] =
-    include_bytes!("../models/mnist_depthwise_cnn_avg_pool_depth_multiplier_1_2_3_int8.tflite");
+const BUFFER: &[u8; 43528] = include_bytes!(
+    "../resources/models/mnist_depthwise_cnn_avg_pool_depth_multiplier_1_2_3_int8.tflite"
+);
 
 const ARENA_SIZE: usize = 210 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
@@ -873,7 +870,7 @@ const IMAGE5: [f32; 28 * 28] = [
     0.0,
 ];
 
-const IMAGE0: [f32; 784] = [
+const _IMAGE0: [f32; 784] = [
     0.0,
     0.0,
     0.0,

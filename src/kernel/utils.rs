@@ -1,8 +1,12 @@
 pub mod fixed_point;
 pub mod padding;
 pub mod quantization;
+pub mod types;
 
-use crate::micro_erros::Result;
+#[cfg(test)]
+pub mod testing;
+
+use crate::micro_errors::Result;
 use quantization::quantize_multiplier;
 
 pub fn calc_per_channel_multiplier_shift(

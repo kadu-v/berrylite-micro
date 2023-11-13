@@ -3,13 +3,13 @@ use berrylite::kernel::micro_operator::f32::{
     reshape::OpReshape,
 };
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_erros::Result;
+use berrylite::micro_errors::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 use core::f32::consts::PI;
 
-const BUFFER: &[u8; 3156] = include_bytes!("../models/simple_conv_sin.tflite");
+const BUFFER: &[u8; 3156] = include_bytes!("../resources/models/simple_conv_sin.tflite");
 
 const ARENA_SIZE: usize = 1024 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

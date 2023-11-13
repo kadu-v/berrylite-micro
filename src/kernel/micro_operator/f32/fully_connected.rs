@@ -1,17 +1,16 @@
-use crate::kernel::micro_activation::get_activation;
+use crate::kernel::micro_activation::{activation_with_min_max, calculate_fused_activation_range};
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
+use crate::kernel::micro_operator::BLiteOperator;
+use crate::kernel::utils::types::flat_skip_dims;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::ArrayElem;
 use crate::micro_context::BLiteContext;
-use crate::micro_erros::BLiteError::*;
-use crate::micro_erros::Result;
+use crate::micro_errors::BLiteError::*;
+use crate::micro_errors::Result;
 use crate::micro_node::BLiteNode;
 use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
-use core::fmt::Debug;
-
-use crate::kernel::micro_operator::BLiteOperator;
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpFullyConnected {}
@@ -36,10 +35,12 @@ impl OpFullyConnected {
         if let Some(builtin_option) = builtin_option {
             op_code = builtin_option.fused_activation_function().0 as i32;
         }
-        let activation = get_activation::<T>(op_code);
+        let (fused_activation_min, fused_activation_max) =
+            calculate_fused_activation_range(op_code)?;
         Ok(BLiteBuiltinOption::FullyConnectedOptions {
             op_code,
-            activation,
+            fused_activation_min,
+            fused_activation_max,
         })
     }
 
@@ -53,48 +54,85 @@ impl OpFullyConnected {
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
-        let idx_input = node.inputs[0] as usize;
-        let input = tensors[idx_input]._b_tensor()?.borrow();
+        let idx_input = node.inputs[0];
+        let input = tensors[idx_input as usize]._t()?.borrow();
 
-        let idx_filter = node.inputs[1] as usize;
-        let filter = tensors[idx_filter]._b_tensor()?.borrow();
+        let idx_filter = node.inputs[1];
+        let filter = tensors[idx_filter as usize]._t()?.borrow();
 
-        let idx_output = node.outputs[0] as usize;
-        let mut output = tensors[idx_output]._b_tensor()?.borrow_mut();
+        let idx_output = node.outputs[0];
+        let mut output = tensors[idx_output as usize]._t()?.borrow_mut();
 
-        let activation = match builtin_option {
-            FullyConnectedOptions {
-                op_code: _,
-                activation,
-            } => activation,
-            NotInitialize => return Err(NotInitializeActivation),
-            _ => return Err(NotCompatibleOption),
+        let idx_bias = node.inputs[2];
+
+        let FullyConnectedOptions {
+            op_code: _,
+            fused_activation_min,
+            fused_activation_max,
+        } = builtin_option
+        else {
+            return Err(NotInitializeActivation);
         };
 
         // TODO:
-        let batches = 1usize;
-        let output_depth = filter.dims[filter.dims.len() - 2] as usize;
-        let accum_depth = filter.dims[filter.dims.len() - 1] as usize;
-
-        for batch in 0..batches {
-            for out_d in 0..output_depth {
-                let mut total: T = Default::default();
-                for acc_d in 0..accum_depth {
-                    total += input.data[batch * accum_depth + acc_d]
-                        * filter.data[out_d * accum_depth + acc_d];
-                }
-                output.data[batch * output_depth + out_d] = total;
-
-                let idx_bias = node.inputs[2];
-                if idx_bias >= 0 {
-                    let bias = tensors[idx_bias as usize]._b_tensor()?.borrow();
-                    output.data[batch * output_depth + out_d] += bias.data[out_d];
-                }
-            }
+        let batches = flat_skip_dims(output.dims, output.dims.len() - 1);
+        let output_depth = filter.dims[filter.dims.len() - 2];
+        let accum_depth = filter.dims[filter.dims.len() - 1];
+        if idx_bias >= 0 {
+            let bias = tensors[idx_bias as usize]._t()?.borrow();
+            Self::kernel(
+                input.data,
+                Some(&bias.data),
+                filter.data,
+                output.data,
+                batches,
+                output_depth,
+                accum_depth,
+                fused_activation_min,
+                fused_activation_max,
+            )
+        } else {
+            Self::kernel(
+                input.data,
+                None,
+                filter.data,
+                output.data,
+                batches,
+                output_depth,
+                accum_depth,
+                fused_activation_min,
+                fused_activation_max,
+            )
         }
-        if let Some(activation) = activation {
-            for i in 0..output.data.len() {
-                output.data[i] = activation(output.data[i]);
+    }
+
+    #[inline(always)]
+    pub fn kernel<T: ArrayElem<T>>(
+        input_data: &[T],
+        bias_data: Option<&[T]>,
+        filter_data: &[T],
+        output_data: &mut [T],
+        batches: i32,
+        output_depth: i32,
+        accum_depth: i32,
+        fused_activation_min: T,
+        fused_activation_max: T,
+    ) -> Result<()> {
+        for batch in 0..batches as usize {
+            for out_d in 0..output_depth as usize {
+                let mut total: T = Default::default();
+                for acc_d in 0..accum_depth as usize {
+                    total += input_data[batch * accum_depth as usize + acc_d]
+                        * filter_data[out_d * accum_depth as usize + acc_d];
+                }
+
+                if let Some(bias_data) = bias_data {
+                    let bias = bias_data[out_d];
+                    total += bias;
+                }
+
+                total = activation_with_min_max(total, fused_activation_min, fused_activation_max);
+                output_data[batch * output_depth as usize + out_d] = total;
             }
         }
 

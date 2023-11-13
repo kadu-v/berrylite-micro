@@ -5,7 +5,6 @@ use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedI
 use berrylite::kernel::micro_operator::i8::reshape_i8::OpReshapeInt8;
 use berrylite::kernel::micro_operator::i8::softmax_i8::OpSoftMaxInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_erros::Result;
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
@@ -27,7 +26,7 @@ static mut BASE_ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 const MOBILENET_V1_0_50_128_QUANTIZED: &[u8; 1364512] =
-    include_bytes!("../models/mobilenet_v1_0.50_128_quantized_1_default_1.tflite");
+    include_bytes!("../resources/models/mobilenet_v1_0.50_128_quantized_1_default_1.tflite");
 
 #[allow(unused_must_use)]
 pub fn benchmark_mobilenet_v1_0_50_128_quantized_1_default_1(c: &mut Criterion) {
@@ -70,7 +69,7 @@ pub fn benchmark_mobilenet_v1_0_50_128_quantized_1_default_1(c: &mut Criterion) 
 }
 
 const MOBILENET_V1_0_50_160_QUANTIZED: &[u8; 1364512] =
-    include_bytes!("../models/mobilenet_v1_0.50_160_quantized_1_default_1.tflite");
+    include_bytes!("../resources/models/mobilenet_v1_0.50_160_quantized_1_default_1.tflite");
 
 #[allow(unused_must_use)]
 pub fn benchmark_mobilenet_v1_0_50_160_quantized_1_default_1(c: &mut Criterion) {
@@ -113,7 +112,7 @@ pub fn benchmark_mobilenet_v1_0_50_160_quantized_1_default_1(c: &mut Criterion) 
 }
 
 const MOBILENET_V1_0_50_192_QUANTIZED: &[u8; 1364512] =
-    include_bytes!("../models/mobilenet_v1_0.50_192_quantized_1_default_1.tflite");
+    include_bytes!("../resources/models/mobilenet_v1_0.50_192_quantized_1_default_1.tflite");
 
 #[allow(unused_must_use)]
 pub fn benchmark_mobilenet_v1_0_50_192_quantized_1_default_1(c: &mut Criterion) {
@@ -156,7 +155,7 @@ pub fn benchmark_mobilenet_v1_0_50_192_quantized_1_default_1(c: &mut Criterion) 
 }
 
 const MOBILENET_V1_0_50_224_QUANTIZED: &[u8; 1364512] =
-    include_bytes!("../models/mobilenet_v1_0.50_224_quantized_1_default_1.tflite");
+    include_bytes!("../resources/models/mobilenet_v1_0.50_224_quantized_1_default_1.tflite");
 
 #[allow(unused_must_use)]
 pub fn benchmark_mobilenet_v1_0_50_224_quantized_1_default_1(c: &mut Criterion) {

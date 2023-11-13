@@ -2,7 +2,7 @@
 use flatbuffers::Vector;
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_erros::Result;
+use crate::micro_errors::Result;
 use core::mem::size_of;
 use core::{fmt::Debug, mem::align_of};
 

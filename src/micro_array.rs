@@ -2,13 +2,14 @@ use flatbuffers::Vector;
 use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::micro_allocator::ArenaAllocator;
-use crate::micro_erros::{BLiteError::*, Result};
+use crate::micro_errors::{BLiteError::*, Result};
 use crate::micro_slice::{from_tflite_vector, from_tflite_vector_mut};
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 use core::slice::from_raw_parts_mut;
+use min_max_traits::{Max, Min};
 
 /*-----------------------------------------------------------------------------*/
 #[derive(Debug, Clone, Copy)]
@@ -43,6 +44,8 @@ pub trait ArrayElem<T: 'static + Clone + Copy> = Debug
     + AsPrimitive<i8>
     + AsPrimitive<i32>
     + FromPrimitive
+    + Max
+    + Min
     + Default;
 
 #[derive(Debug)]

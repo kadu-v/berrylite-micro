@@ -1,11 +1,11 @@
 use berrylite::kernel::micro_operator::i8::fully_connected_i8::OpFullyConnectedInt8;
 use berrylite::micro_allocator::BumpArenaAllocator;
-use berrylite::micro_erros::{BLiteError, Result};
+use berrylite::micro_errors::{BLiteError, Result};
 use berrylite::micro_interpreter::BLiteInterpreter;
 use berrylite::micro_op_resolver::BLiteOpResolver;
 use berrylite::tflite_schema_generated::tflite;
 
-const BUFFER: &[u8; 2704] = include_bytes!("../models/hello_world_int8.tflite");
+const BUFFER: &[u8; 2704] = include_bytes!("../resources/models/hello_world_int8.tflite");
 
 const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];

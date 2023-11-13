@@ -1,12 +1,12 @@
 #![feature(trait_alias)]
 #![feature(core_intrinsics)]
-#![no_std]
+#![cfg_attr(feature = "no_std", no_std)]
 pub mod builtin_op_data;
 pub mod kernel;
 pub mod micro_allocator;
 pub mod micro_array;
 pub mod micro_context;
-pub mod micro_erros;
+pub mod micro_errors;
 pub mod micro_graph;
 pub mod micro_interpreter;
 pub mod micro_node;

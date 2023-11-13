@@ -1,6 +1,6 @@
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray};
-use crate::micro_erros::Result;
+use crate::micro_errors::Result;
 use crate::micro_graph::BLiteGraph;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::tflite_schema_generated::tflite::Model;
@@ -26,6 +26,11 @@ where
         model: &'a Model<'a>,
     ) -> Result<Self> {
         let version = model.version();
+        assert_eq!(
+            version, 3,
+            "Expected the version of model is 3, but got {}",
+            version
+        );
 
         let graph = BLiteGraph::allocate_graph(allocator, op_resolver, model)?;
 
@@ -38,7 +43,7 @@ where
         );
         let input_index = subgraph.inputs().unwrap().get(0) as usize;
         let input = unsafe {
-            &mut *((graph.subgraphs[0].borrow().tensors[input_index]._b_tensor()?).as_ptr()
+            &mut *((graph.subgraphs[0].borrow().tensors[input_index]._t()?).as_ptr()
                 as *mut BLiteArray<'a, T>)
         };
 
@@ -50,7 +55,7 @@ where
         );
         let output_index = subgraph.outputs().unwrap().get(0) as usize;
         let output = unsafe {
-            &*((graph.subgraphs[0].borrow().tensors[output_index]._b_tensor()?).as_ptr()
+            &*((graph.subgraphs[0].borrow().tensors[output_index]._t()?).as_ptr()
                 as *const BLiteArray<'a, T>)
         };
 
