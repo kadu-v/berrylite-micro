@@ -56,6 +56,6 @@ impl ArenaAllocator for BumpArenaAllocator {
     }
 
     fn description(&self) -> Result<(usize, usize)> {
-        Ok((self.arena_size, self.next))
+        Ok((self.arena_size, self.next - self.arena_start))
     }
 }

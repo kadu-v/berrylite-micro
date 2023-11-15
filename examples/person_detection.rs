@@ -12,7 +12,7 @@ use berrylite::tflite_schema_generated::tflite;
 
 const BUFFER: &[u8; 300568] = include_bytes!("../resources/models/person_detect.tflite");
 
-const ARENA_SIZE: usize = 1024 * 1024 * 1024;
+const ARENA_SIZE: usize = 270 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(
