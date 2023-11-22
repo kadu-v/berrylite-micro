@@ -180,6 +180,10 @@ where
             }
         };
 
+        // TODO: ここは本件のtflite microではmemory planner が最適化されたメモリ配置でTensorを確保するので，
+        // AllocateTfLiteEvalTensors(https://vscode.dev/github/kadu-v/tflite-micro-sample/blob/main/tensorflow/lite/micro/micro_allocator.cc#L472-L473)では，個別のTensorをallocationしない．
+        // 実際にallocationしているのは，[TfLiteStatus MicroAllocator::FinishModelAllocation(](https://vscode.dev/github/kadu-v/tflite-micro-sample/blob/main/tensorflow/lite/micro/micro_allocator.cc#L479-L480)
+        // この関数でしている．
         if let Some(subgraph_tensors) = subgraph.tensors() {
             for (i, tensor) in subgraph_tensors.iter().enumerate() {
                 let quant_params = tensor.quantization();
