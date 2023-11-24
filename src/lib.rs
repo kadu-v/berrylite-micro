@@ -3,6 +3,7 @@
 #![cfg_attr(feature = "no_std", no_std)]
 pub mod builtin_op_data;
 pub mod kernel;
+pub mod memory_planner;
 pub mod micro_allocator;
 pub mod micro_array;
 pub mod micro_context;

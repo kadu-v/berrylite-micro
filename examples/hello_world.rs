@@ -8,7 +8,7 @@ use core::f32::consts::PI;
 
 const BUFFER: &[u8; 3164] = include_bytes!("../resources/models/hello_world_float.tflite");
 
-const ARENA_SIZE: usize = 100 * 1024;
+const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(interpreter: &mut BLiteInterpreter<'_, f32>, input: f32) {
@@ -36,6 +36,7 @@ fn predict(input: f32) -> Result<f32> {
 fn main() {
     let delta = 0.05;
     let inputs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+    let inputs = [0.1];
     for input in inputs {
         let input = input * PI;
         let y_pred = match predict(input) {
