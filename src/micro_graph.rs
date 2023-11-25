@@ -1,6 +1,6 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use crate::micro_allocation_info::{AllocationInfo, AllocationInfoBuilder};
+use crate::micro_allocation_info::{self, AllocationInfo, AllocationInfoBuilder};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -11,7 +11,7 @@ use crate::micro_errors::{
 use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
-use crate::micro_slice::from_tflite_vector;
+use crate::micro_slice::{alloc_array_mut, from_tflite_vector};
 use crate::micro_tensor::BLiteTensor;
 use crate::micro_tensor::BLiteTensor::*;
 use crate::tflite_schema_generated::tflite::{
@@ -142,10 +142,11 @@ where
         operator_codes: &TFLiteOperatorCodes<'a>,
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<Self> {
-        let (tensors, not_allocated_size) =
-            Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
+        let tensors = Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
 
-        Self::commit_memory_plan(allocator, subgraph, operators, tensors, not_allocated_size)?;
+        Self::allocate_inputs_outputs(allocator, subgraph, tensors)?;
+
+        Self::commit_memory_plan(allocator, operators, tensors)?;
 
         let node_and_registrations = unsafe {
             Self::allocate_node_and_registrations(
@@ -163,31 +164,89 @@ where
         })
     }
 
-    fn commit_memory_plan(
+    fn allocate_inputs_outputs(
         allocator: &mut impl ArenaAllocator,
         subgraph: &TFLiteSubGraph<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<()> {
+        let inputs = subgraph.inputs().unwrap();
+        let outputs = subgraph.outputs().unwrap();
+
+        for input_idx in inputs.iter() {
+            let size = tensors[input_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = tensors[input_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+
+        for output_idx in outputs.iter() {
+            let size = tensors[output_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = tensors[output_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+        Ok(())
+    }
+
+    fn commit_memory_plan(
+        allocator: &mut impl ArenaAllocator,
         operators: &TFLiteOperators<'a>,
         tensors: &mut [BLiteTensor<'a, T>],
-        not_allocated_size: usize,
     ) -> Result<()> {
+        // TODO: should be drop this all allocation infos after creating allocation infos
         let mut all_alloc_info = unsafe { AllocationInfoBuilder::new(allocator, tensors.len()) }?;
-        let alloc_info = unsafe { AllocationInfoBuilder::new(allocator, not_allocated_size) }?;
-
         for (time_step, op) in operators.iter().enumerate() {
             let inputs = op.inputs().unwrap();
             let outputs = op.outputs().unwrap();
 
+            // check last_time_used using inputs
             for idx in inputs {
                 let idx = idx as usize;
-                let size = tensors[idx].len();
-                let first_time_used = time_step;
+                let size = tensors[idx].size();
+                let last_time_used = time_step;
+                let need_allocation = tensors[idx].len() == 0;
+                let info =
+                    AllocationInfo::new(size, idx, None, Some(last_time_used), need_allocation);
+                all_alloc_info.update_last_time_used(idx, info);
+            }
 
-                let info = AllocationInfo::new(size, idx, Some(first_time_used), None);
-                all_alloc_info.update_first_used(idx, info);
+            // check first_time_used using outputs
+            for idx in outputs {
+                let idx = idx as usize;
+                let size = tensors[idx].size();
+                let first_time_used = time_step;
+                let need_allocation = tensors[idx].len() == 0;
+                let info =
+                    AllocationInfo::new(size, idx, Some(first_time_used), None, need_allocation);
+                all_alloc_info.update_first_time_used(idx, info);
             }
         }
 
-        dbg!(all_alloc_info);
+        let need_allocation_count =
+            all_alloc_info.infos.iter().fold(
+                0,
+                |acc, &info| {
+                    if info.need_allocation {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                },
+            );
+
+        let mut alloc_info =
+            unsafe { AllocationInfoBuilder::new(allocator, need_allocation_count) }?;
+        for info in all_alloc_info.infos.iter() {
+            if info.need_allocation {
+                alloc_info.add_info(info)?;
+            }
+        }
+
+        alloc_info.in_place_reverse_sort();
+
+        for info in alloc_info.infos {
+            println!("{:?}", info);
+        }
         Ok(())
     }
 
@@ -195,12 +254,7 @@ where
         allocator: &mut impl ArenaAllocator,
         subgraph: &TFLiteSubGraph<'a>,
         buffers: &TFLiteBuffers<'a>,
-    ) -> Result<(
-        &'a mut [BLiteTensor<'a, T>],
-        usize, /* size of not allocated tensors */
-    )> {
-        let mut not_allocated_size = 0;
-
+    ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
         // size of allocated tensors
         let tensors_size = subgraph.tensors().unwrap().len();
 
@@ -239,15 +293,11 @@ where
                         BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
                     };
                     tensors[i] = BTensor(RefCell::new(tflite_tensor));
-
-                    if buffer.data().is_none() {
-                        not_allocated_size += 1;
-                    }
                 } else {
                     return Err(BLiteError::InCompatibleType);
                 }
             }
-            Ok((tensors, not_allocated_size))
+            Ok(tensors)
         } else {
             Err(NotFoundTensor)
         }

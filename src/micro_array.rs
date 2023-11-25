@@ -125,6 +125,11 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         self.data.len()
     }
 
+    #[inline(always)]
+    pub fn size(&self) -> usize {
+        self.dims.iter().fold(1, |acc, &x| x * acc) as usize
+    }
+
     pub fn get_quantization_scale_and_zero_point(&self) -> Option<(&'a [f32], &'a [i64])> {
         self.quant_params
             .map(|quant_params| (quant_params.scale, quant_params.zero_point))

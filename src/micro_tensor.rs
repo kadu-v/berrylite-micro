@@ -39,4 +39,11 @@ where
             BLiteTensor::I32Tensor(x) => x.borrow().len(),
         }
     }
+
+    pub fn size(&self) -> usize {
+        match self {
+            BLiteTensor::BTensor(x) => x.borrow().size(),
+            BLiteTensor::I32Tensor(x) => x.borrow().size(),
+        }
+    }
 }
