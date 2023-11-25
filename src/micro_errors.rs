@@ -2,6 +2,9 @@ pub type Result<T> = core::result::Result<T, BLiteError>;
 
 #[derive(Debug)]
 pub enum BLiteError {
+    //
+    InfoIndexOutOfBound,
+
     // allocator errors
     FailedToAllocateMemory,
 

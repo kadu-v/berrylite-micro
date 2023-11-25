@@ -1,5 +1,6 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
+use crate::micro_allocation_info::{AllocationInfo, AllocationInfoBuilder};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -141,7 +142,10 @@ where
         operator_codes: &TFLiteOperatorCodes<'a>,
         buffers: &TFLiteBuffers<'a>,
     ) -> Result<Self> {
-        let tensors = Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
+        let (tensors, not_allocated_size) =
+            Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
+
+        Self::commit_memory_plan(allocator, subgraph, operators, tensors, not_allocated_size)?;
 
         let node_and_registrations = unsafe {
             Self::allocate_node_and_registrations(
@@ -159,11 +163,44 @@ where
         })
     }
 
+    fn commit_memory_plan(
+        allocator: &mut impl ArenaAllocator,
+        subgraph: &TFLiteSubGraph<'a>,
+        operators: &TFLiteOperators<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
+        not_allocated_size: usize,
+    ) -> Result<()> {
+        let mut all_alloc_info = unsafe { AllocationInfoBuilder::new(allocator, tensors.len()) }?;
+        let alloc_info = unsafe { AllocationInfoBuilder::new(allocator, not_allocated_size) }?;
+
+        for (time_step, op) in operators.iter().enumerate() {
+            let inputs = op.inputs().unwrap();
+            let outputs = op.outputs().unwrap();
+
+            for idx in inputs {
+                let idx = idx as usize;
+                let size = tensors[idx].len();
+                let first_time_used = time_step;
+
+                let info = AllocationInfo::new(size, idx, Some(first_time_used), None);
+                all_alloc_info.update_first_used(idx, info);
+            }
+        }
+
+        dbg!(all_alloc_info);
+        Ok(())
+    }
+
     fn allocate_eval_tensors(
         allocator: &mut impl ArenaAllocator,
         subgraph: &TFLiteSubGraph<'a>,
         buffers: &TFLiteBuffers<'a>,
-    ) -> Result<&'a mut [BLiteTensor<'a, T>]> {
+    ) -> Result<(
+        &'a mut [BLiteTensor<'a, T>],
+        usize, /* size of not allocated tensors */
+    )> {
+        let mut not_allocated_size = 0;
+
         // size of allocated tensors
         let tensors_size = subgraph.tensors().unwrap().len();
 
@@ -202,11 +239,15 @@ where
                         BLiteArray::from_tflite_buffer(allocator, buffer, dims, blite_quant_params)?
                     };
                     tensors[i] = BTensor(RefCell::new(tflite_tensor));
+
+                    if buffer.data().is_none() {
+                        not_allocated_size += 1;
+                    }
                 } else {
                     return Err(BLiteError::InCompatibleType);
                 }
             }
-            Ok(tensors)
+            Ok((tensors, not_allocated_size))
         } else {
             Err(NotFoundTensor)
         }
@@ -253,7 +294,7 @@ where
             let outputs = op.outputs().unwrap();
             let node = Self::allocate_node(&inputs, &outputs)?;
             let registration =
-                Self::alloc_registration(op_resolver, allocator, &op, operator_codes, tensors)?;
+                Self::allocate_registration(op_resolver, allocator, &op, operator_codes, tensors)?;
             node_and_registrations[i] = (node, registration);
         }
 
@@ -272,7 +313,7 @@ where
         })
     }
 
-    unsafe fn alloc_registration<const N: usize, S: ArenaAllocator>(
+    unsafe fn allocate_registration<const N: usize, S: ArenaAllocator>(
         op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
         allocator: &mut S,
         op: &Operator<'a>,
