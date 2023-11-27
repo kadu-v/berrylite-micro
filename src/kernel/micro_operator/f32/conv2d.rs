@@ -118,6 +118,7 @@ impl OpConv2D {
         let output_height = output.dims[1];
         let output_width = output.dims[2];
         let output_depth = output.dims[3];
+        println!("output: {:p}", output.data);
 
         // TODO: What is this?
         let batches = input.dims[0]; // TODO: min(input.dims[0], output.dims[0])

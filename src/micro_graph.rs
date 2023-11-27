@@ -1,6 +1,7 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use crate::micro_allocation_info::{self, AllocationInfo, AllocationInfoBuilder};
+use crate::memory_planner::greedy_memory_planner::GreedyMemoryPlanner;
+use crate::micro_allocation_info::{AllocationInfo, Requirement};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -158,6 +159,10 @@ where
             )?
         };
 
+        for (node, registration) in node_and_registrations {
+            println!("{:?} {:?}", registration, node);
+        }
+
         Ok(Self {
             node_and_registrations,
             tensors,
@@ -194,7 +199,7 @@ where
         tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<()> {
         // TODO: should be drop this all allocation infos after creating allocation infos
-        let mut all_alloc_info = unsafe { AllocationInfoBuilder::new(allocator, tensors.len()) }?;
+        let mut all_alloc_info = unsafe { AllocationInfo::new(allocator, tensors.len()) }?;
         for (time_step, op) in operators.iter().enumerate() {
             let inputs = op.inputs().unwrap();
             let outputs = op.outputs().unwrap();
@@ -205,8 +210,7 @@ where
                 let size = tensors[idx].size();
                 let last_time_used = time_step;
                 let need_allocation = tensors[idx].len() == 0;
-                let info =
-                    AllocationInfo::new(size, idx, None, Some(last_time_used), need_allocation);
+                let info = Requirement::new(size, idx, None, Some(last_time_used), need_allocation);
                 all_alloc_info.update_last_time_used(idx, info);
             }
 
@@ -217,13 +221,13 @@ where
                 let first_time_used = time_step;
                 let need_allocation = tensors[idx].len() == 0;
                 let info =
-                    AllocationInfo::new(size, idx, Some(first_time_used), None, need_allocation);
+                    Requirement::new(size, idx, Some(first_time_used), None, need_allocation);
                 all_alloc_info.update_first_time_used(idx, info);
             }
         }
 
         let need_allocation_count =
-            all_alloc_info.infos.iter().fold(
+            all_alloc_info.info.iter().fold(
                 0,
                 |acc, &info| {
                     if info.need_allocation {
@@ -234,20 +238,19 @@ where
                 },
             );
 
-        let mut alloc_info =
-            unsafe { AllocationInfoBuilder::new(allocator, need_allocation_count) }?;
-        for info in all_alloc_info.infos.iter() {
+        let mut alloc_info = unsafe { AllocationInfo::new(allocator, need_allocation_count) }?;
+        for info in all_alloc_info.info.iter() {
             if info.need_allocation {
                 alloc_info.add_info(info)?;
             }
         }
 
         alloc_info.in_place_reverse_sort();
+        let mut greedy_memory_planner = GreedyMemoryPlanner::new(allocator, &mut alloc_info)?;
+        greedy_memory_planner.calculate_offsets_if_needed()?;
 
-        for info in alloc_info.infos {
-            println!("{:?}", info);
-        }
-        Ok(())
+        // allocate tensors following memory plan
+        unsafe { greedy_memory_planner.allocate_tensors(allocator, tensors) }
     }
 
     fn allocate_eval_tensors(
@@ -393,13 +396,13 @@ where
 
     pub fn invoke(&mut self) -> Result<()> {
         let node_and_registrations = self.node_and_registrations;
-
         let ctx = BLiteContext::new();
-
         for (_, (node, registration)) in node_and_registrations.iter().enumerate() {
             let tensors = unsafe { &mut *(self.tensors as *mut [BLiteTensor<_>]) };
             let builtin_option = registration.builtin_option;
             let eval = registration.eval;
+            println!("{:?}", registration);
+            println!("{:p}", registration);
             eval(&ctx, tensors, node, builtin_option)?;
         }
         Ok(())
