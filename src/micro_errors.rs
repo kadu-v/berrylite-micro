@@ -2,6 +2,13 @@ pub type Result<T> = core::result::Result<T, BLiteError>;
 
 #[derive(Debug)]
 pub enum BLiteError {
+    // greedy memory planner
+    OutOfListEntrySize,
+    NotFoundRequirementIdx,
+
+    // allocation info
+    InfoIndexOutOfBound,
+
     // allocator errors
     FailedToAllocateMemory,
 

@@ -1,5 +1,7 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
+use crate::memory_planner::greedy_memory_planner::GreedyMemoryPlanner;
+use crate::micro_allocation_info::{AllocationInfo, Requirement};
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -10,7 +12,7 @@ use crate::micro_errors::{
 use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
-use crate::micro_slice::from_tflite_vector;
+use crate::micro_slice::{alloc_array_mut, from_tflite_vector};
 use crate::micro_tensor::BLiteTensor;
 use crate::micro_tensor::BLiteTensor::*;
 use crate::tflite_schema_generated::tflite::{
@@ -143,6 +145,10 @@ where
     ) -> Result<Self> {
         let tensors = Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
 
+        Self::allocate_inputs_outputs(allocator, subgraph, tensors)?;
+
+        Self::commit_memory_plan(allocator, operators, tensors)?;
+
         let node_and_registrations = unsafe {
             Self::allocate_node_and_registrations(
                 op_resolver,
@@ -157,6 +163,90 @@ where
             node_and_registrations,
             tensors,
         })
+    }
+
+    fn allocate_inputs_outputs(
+        allocator: &mut impl ArenaAllocator,
+        subgraph: &TFLiteSubGraph<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<()> {
+        let inputs = subgraph.inputs().unwrap();
+        let outputs = subgraph.outputs().unwrap();
+
+        for input_idx in inputs.iter() {
+            let size = tensors[input_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = tensors[input_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+
+        for output_idx in outputs.iter() {
+            let size = tensors[output_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = tensors[output_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+        Ok(())
+    }
+
+    fn commit_memory_plan(
+        allocator: &mut impl ArenaAllocator,
+        operators: &TFLiteOperators<'a>,
+        tensors: &mut [BLiteTensor<'a, T>],
+    ) -> Result<()> {
+        // TODO: should be drop this all allocation infos after creating allocation infos
+        let mut all_alloc_info = unsafe { AllocationInfo::new(allocator, tensors.len()) }?;
+        for (time_step, op) in operators.iter().enumerate() {
+            let inputs = op.inputs().unwrap();
+            let outputs = op.outputs().unwrap();
+
+            // check last_time_used using inputs
+            for idx in inputs {
+                let idx = idx as usize;
+                let size = tensors[idx].size();
+                let last_time_used = time_step;
+                let need_allocation = tensors[idx].len() == 0;
+                let info = Requirement::new(size, idx, None, Some(last_time_used), need_allocation);
+                all_alloc_info.update_last_time_used(idx, info);
+            }
+
+            // check first_time_used using outputs
+            for idx in outputs {
+                let idx = idx as usize;
+                let size = tensors[idx].size();
+                let first_time_used = time_step;
+                let need_allocation = tensors[idx].len() == 0;
+                let info =
+                    Requirement::new(size, idx, Some(first_time_used), None, need_allocation);
+                all_alloc_info.update_first_time_used(idx, info);
+            }
+        }
+
+        let need_allocation_count =
+            all_alloc_info.info.iter().fold(
+                0,
+                |acc, &info| {
+                    if info.need_allocation {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                },
+            );
+
+        let mut alloc_info = unsafe { AllocationInfo::new(allocator, need_allocation_count) }?;
+        for info in all_alloc_info.info.iter() {
+            if info.need_allocation {
+                alloc_info.add_info(info)?;
+            }
+        }
+
+        alloc_info.in_place_reverse_sort();
+        let mut greedy_memory_planner = GreedyMemoryPlanner::new(allocator, &mut alloc_info)?;
+        greedy_memory_planner.calculate_offsets_if_needed()?;
+
+        // allocate tensors following memory plan
+        unsafe { greedy_memory_planner.allocate_tensors(allocator, tensors) }
     }
 
     fn allocate_eval_tensors(
@@ -180,6 +270,10 @@ where
             }
         };
 
+        // TODO: ここは本件のtflite microではmemory planner が最適化されたメモリ配置でTensorを確保するので，
+        // AllocateTfLiteEvalTensors(https://vscode.dev/github/kadu-v/tflite-micro-sample/blob/main/tensorflow/lite/micro/micro_allocator.cc#L472-L473)では，個別のTensorをallocationしない．
+        // 実際にallocationしているのは，[TfLiteStatus MicroAllocator::FinishModelAllocation(](https://vscode.dev/github/kadu-v/tflite-micro-sample/blob/main/tensorflow/lite/micro/micro_allocator.cc#L479-L480)
+        // この関数でしている．
         if let Some(subgraph_tensors) = subgraph.tensors() {
             for (i, tensor) in subgraph_tensors.iter().enumerate() {
                 let quant_params = tensor.quantization();
@@ -249,7 +343,7 @@ where
             let outputs = op.outputs().unwrap();
             let node = Self::allocate_node(&inputs, &outputs)?;
             let registration =
-                Self::alloc_registration(op_resolver, allocator, &op, operator_codes, tensors)?;
+                Self::allocate_registration(op_resolver, allocator, &op, operator_codes, tensors)?;
             node_and_registrations[i] = (node, registration);
         }
 
@@ -268,7 +362,7 @@ where
         })
     }
 
-    unsafe fn alloc_registration<const N: usize, S: ArenaAllocator>(
+    unsafe fn allocate_registration<const N: usize, S: ArenaAllocator>(
         op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
         allocator: &mut S,
         op: &Operator<'a>,
@@ -298,9 +392,7 @@ where
 
     pub fn invoke(&mut self) -> Result<()> {
         let node_and_registrations = self.node_and_registrations;
-
         let ctx = BLiteContext::new();
-
         for (_, (node, registration)) in node_and_registrations.iter().enumerate() {
             let tensors = unsafe { &mut *(self.tensors as *mut [BLiteTensor<_>]) };
             let builtin_option = registration.builtin_option;

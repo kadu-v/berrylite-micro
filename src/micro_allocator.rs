@@ -1,9 +1,18 @@
-use crate::micro_errors::{BLiteError::*, Result};
+use crate::micro_errors::{
+    BLiteError::{self, *},
+    Result,
+};
 
 pub trait ArenaAllocator {
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Result<*mut u8>;
+    unsafe fn alloc_from_offset(
+        &mut self,
+        offset: usize,
+        size: usize,
+        align: usize,
+    ) -> Result<*mut u8>;
     unsafe fn dealloc(&mut self, ptr: *mut u8, size: usize, align: usize);
-
+    unsafe fn update_offset(&mut self, offset: usize) -> Result<()>;
     fn description(&self) -> Result<(usize, usize)>;
 }
 
@@ -49,6 +58,34 @@ impl ArenaAllocator for BumpArenaAllocator {
             self.next = alloc_next;
             Ok(alloc_start as *mut u8)
         }
+    }
+
+    // Must update alloc_next after allocating all tensors
+    unsafe fn alloc_from_offset(
+        &mut self,
+        offset: usize,
+        size: usize,
+        align: usize,
+    ) -> Result<*mut u8> {
+        let alloc_size = size;
+        let alloc_start = Self::align_up(self.next + offset, align);
+        let alloc_next = match alloc_start.checked_add(alloc_size) {
+            Some(next) => next,
+            None => return Err(FailedToAllocateMemory),
+        };
+        if alloc_next > self.arena_end {
+            Err(FailedToAllocateMemory)
+        } else {
+            Ok(alloc_start as *mut u8)
+        }
+    }
+
+    unsafe fn update_offset(&mut self, offset: usize) -> Result<()> {
+        if self.next + offset > self.arena_end {
+            return Err(BLiteError::FailedToAllocateMemory);
+        }
+        self.next = self.next + offset;
+        Ok(())
     }
 
     unsafe fn dealloc(&mut self, _ptr: *mut u8, _size: usize, _align: usize) {

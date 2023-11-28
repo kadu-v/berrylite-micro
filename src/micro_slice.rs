@@ -38,3 +38,18 @@ pub unsafe fn alloc_array_mut<'a, T>(
     let data = core::slice::from_raw_parts_mut(ptr as *mut T, size);
     Ok(data)
 }
+
+// Must update arena_start after allocating all tensors
+pub unsafe fn alloc_array_from_offset<'a, T>(
+    allocator: &mut impl ArenaAllocator,
+    start_offset: usize,
+    size: usize,
+) -> Result<&'a mut [T]> {
+    let ptr = allocator.alloc_from_offset(
+        size_of::<T>() * start_offset,
+        size_of::<T>() * size,
+        align_of::<T>(),
+    )?;
+    let data = core::slice::from_raw_parts_mut(ptr as *mut T, size);
+    Ok(data)
+}

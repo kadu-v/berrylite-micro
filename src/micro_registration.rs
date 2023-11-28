@@ -56,8 +56,8 @@ impl<'a, T: ArrayElem<T>> Debug for BLiteRegistration<'a, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(
             f,
-            "Registration {{ op_code: {}, eval:..., builtin_option: {:?} }}",
-            self.op_code, self.builtin_option
+            "Registration {{ op_code: {}, eval: {:p}, builtin_option: {:?} }}",
+            self.op_code, self.eval, self.builtin_option
         )?;
         Ok(())
     }

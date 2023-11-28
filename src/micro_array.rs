@@ -3,7 +3,7 @@ use num_traits::{AsPrimitive, FromPrimitive};
 
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_errors::{BLiteError::*, Result};
-use crate::micro_slice::{from_tflite_vector, from_tflite_vector_mut};
+use crate::micro_slice::{alloc_array_mut, from_tflite_vector, from_tflite_vector_mut};
 use crate::tflite_schema_generated::tflite::Buffer;
 use core::fmt::Debug;
 use core::mem::{align_of, size_of};
@@ -48,6 +48,7 @@ pub trait ArrayElem<T: 'static + Clone + Copy> = Debug
     + Min
     + Default;
 
+/*-----------------------------------------------------------------------------*/
 #[derive(Debug)]
 pub struct BLiteArray<'a, T>
 where
@@ -79,6 +80,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
 
         let dims_row_ptr = allocator.alloc(size_of::<usize>() * dims.len(), align_of::<usize>())?;
 
+        // TODO: should not copy the array of dims
         let copied_dims = from_raw_parts_mut(dims_row_ptr as *mut i32, dims.len());
 
         for (i, &e) in dims.iter().enumerate() {
@@ -107,15 +109,25 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
                 quant_params,
             })
         } else {
-            let data_size = shape.iter().fold(1usize, |x, acc| x * acc as usize);
             let dims = from_tflite_vector(&shape);
+            let data = alloc_array_mut(allocator, 0)?;
 
-            Self::new(allocator, data_size, dims, quant_params)
+            Ok(Self {
+                data,
+                dims,
+                quant_params: quant_params,
+            })
         }
     }
 
+    #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
+    }
+
+    #[inline(always)]
+    pub fn size(&self) -> usize {
+        self.dims.iter().fold(1, |acc, &x| x * acc) as usize
     }
 
     pub fn get_quantization_scale_and_zero_point(&self) -> Option<(&'a [f32], &'a [i64])> {
