@@ -11,7 +11,7 @@ use image::{ImageBuffer, Luma};
 
 const BUFFER: &[u8; 377200] = include_bytes!("../resources/models/mnist_cnn.tflite");
 
-const ARENA_SIZE: usize = 160 * 1024;
+const ARENA_SIZE: usize = 100 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(

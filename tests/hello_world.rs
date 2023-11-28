@@ -9,7 +9,7 @@ use float_eq::assert_float_eq;
 
 const BUFFER: &[u8; 3164] = include_bytes!("../resources/models/hello_world_float.tflite");
 
-const ARENA_SIZE: usize = 100 * 1024;
+const ARENA_SIZE: usize = 10 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(interpreter: &mut BLiteInterpreter<'_, f32>, input: f32) {

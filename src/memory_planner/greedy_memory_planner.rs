@@ -1,5 +1,3 @@
-use core::borrow::BorrowMut;
-
 use crate::{
     micro_allocation_info::AllocationInfo,
     micro_allocator::ArenaAllocator,
@@ -9,6 +7,7 @@ use crate::{
     micro_slice::{alloc_array_from_offset, alloc_array_mut},
     micro_tensor::BLiteTensor,
 };
+use core::mem::size_of;
 
 /*-----------------------------------------------------------------------------*/
 /* Struct for a List Entry                                                     */
@@ -169,8 +168,7 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
                 max_offset = offset + size;
             }
         }
-        allocator.update_offset(max_offset);
-        Ok(())
+        allocator.update_offset(size_of::<T>() * max_offset)
     }
 
     fn next_simultaneous_active_buffer(
@@ -252,7 +250,6 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
                     }
                 }
                 if let Some(next_entry) = next_entry {
-                    println!("{:?} {}", next_entry, candidate_offset);
                     let gap = next_entry.offset as i32 - candidate_offset as i32;
                     if gap >= wanted_size as i32 {
                         break;
@@ -269,14 +266,6 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
             let new_entry = ListEntry::new(new_entry_offset, new_entry_requirement_idx, None);
             self.insert_entry(new_entry)?;
         }
-
-        for (i, info) in self.info.info.iter().enumerate() {
-            println!("-----------------------------------");
-            println!("{:?}", self.offset_list.list[i]);
-            println!("{:?}", info);
-        }
-        println!("-----------------------------------");
-
         Ok(())
     }
 }

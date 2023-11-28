@@ -1,4 +1,7 @@
-use crate::micro_errors::{BLiteError::*, Result};
+use crate::micro_errors::{
+    BLiteError::{self, *},
+    Result,
+};
 
 pub trait ArenaAllocator {
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Result<*mut u8>;
@@ -9,8 +12,7 @@ pub trait ArenaAllocator {
         align: usize,
     ) -> Result<*mut u8>;
     unsafe fn dealloc(&mut self, ptr: *mut u8, size: usize, align: usize);
-    unsafe fn update_offset(&mut self, offset: usize);
-    fn print_description(&self);
+    unsafe fn update_offset(&mut self, offset: usize) -> Result<()>;
     fn description(&self) -> Result<(usize, usize)>;
 }
 
@@ -46,7 +48,6 @@ impl ArenaAllocator for BumpArenaAllocator {
     unsafe fn alloc(&mut self, size: usize, align: usize) -> Result<*mut u8> {
         let alloc_size = size;
         let alloc_start = Self::align_up(self.next, align);
-        println!("address x: {:x} {}", alloc_start, alloc_size);
         let alloc_next = match alloc_start.checked_add(alloc_size) {
             Some(next) => next,
             None => return Err(FailedToAllocateMemory),
@@ -68,7 +69,6 @@ impl ArenaAllocator for BumpArenaAllocator {
     ) -> Result<*mut u8> {
         let alloc_size = size;
         let alloc_start = Self::align_up(self.next + offset, align);
-        println!("address: {:x} {}", alloc_start, alloc_size);
         let alloc_next = match alloc_start.checked_add(alloc_size) {
             Some(next) => next,
             None => return Err(FailedToAllocateMemory),
@@ -80,16 +80,16 @@ impl ArenaAllocator for BumpArenaAllocator {
         }
     }
 
-    unsafe fn update_offset(&mut self, offset: usize) {
+    unsafe fn update_offset(&mut self, offset: usize) -> Result<()> {
+        if self.next + offset > self.arena_end {
+            return Err(BLiteError::FailedToAllocateMemory);
+        }
         self.next = self.next + offset;
+        Ok(())
     }
 
     unsafe fn dealloc(&mut self, _ptr: *mut u8, _size: usize, _align: usize) {
         todo!()
-    }
-
-    fn print_description(&self) {
-        dbg!(self);
     }
 
     fn description(&self) -> Result<(usize, usize)> {

@@ -13,7 +13,7 @@ use image::{ImageBuffer, Luma};
 
 const BUFFER: &[u8; 300568] = include_bytes!("../resources/models/person_detect.tflite");
 
-const ARENA_SIZE: usize = 140 * 1024;
+const ARENA_SIZE: usize = 136 * 1024;
 static mut ARENA: [u8; ARENA_SIZE] = [0; ARENA_SIZE];
 
 fn set_input(

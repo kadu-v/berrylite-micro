@@ -159,10 +159,6 @@ where
             )?
         };
 
-        for (node, registration) in node_and_registrations {
-            println!("{:?} {:?}", registration, node);
-        }
-
         Ok(Self {
             node_and_registrations,
             tensors,
@@ -401,8 +397,6 @@ where
             let tensors = unsafe { &mut *(self.tensors as *mut [BLiteTensor<_>]) };
             let builtin_option = registration.builtin_option;
             let eval = registration.eval;
-            println!("{:?}", registration);
-            println!("{:p}", registration);
             eval(&ctx, tensors, node, builtin_option)?;
         }
         Ok(())
