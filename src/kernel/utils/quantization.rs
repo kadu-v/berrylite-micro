@@ -1,5 +1,7 @@
 use crate::micro_errors::BLiteError::{self, NotMatchScale};
 use crate::micro_errors::Result;
+#[cfg(feature = "no_std")]
+use num_traits::Float;
 
 // FullyConnectedParamsQuantized: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected_common.cc#L34
 // OpDataFullyConnected: https://github.com/kadu-v/tflite-micro-sample/blob/0f674d38fc8becd90fbd943fb7e7c49f808a7019/tensorflow/lite/micro/kernels/fully_connected.h#L26

@@ -1,5 +1,3 @@
-use num_traits::{AsPrimitive, FromPrimitive};
-
 use crate::kernel::micro_builtin_options::{BLiteBuiltinOption, BLiteBuiltinOption::*};
 use crate::kernel::micro_operator::BLiteOperator;
 use crate::kernel::utils::quantization::{dequantize, quantize};
@@ -13,6 +11,9 @@ use crate::micro_registration::BLiteRegistration;
 use crate::micro_tensor::BLiteTensor;
 use crate::tflite_schema_generated::tflite::Operator;
 use core::fmt::Debug;
+#[cfg(feature = "no_std")]
+use num_traits::Float;
+use num_traits::{AsPrimitive, FromPrimitive};
 
 #[derive(Debug, Clone, Copy)]
 pub struct OpSoftMaxInt8 {}
