@@ -94,7 +94,7 @@ impl<'a, T: ArrayElem<T>> BLiteArray<'a, T> {
         });
     }
 
-    pub unsafe fn from_tflite_buffer(
+    pub(crate) unsafe fn from_tflite_buffer(
         allocator: &mut impl ArenaAllocator,
         buffer: Buffer<'a>,
         shape: Vector<'a, i32>,

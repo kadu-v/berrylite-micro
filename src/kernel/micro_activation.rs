@@ -4,7 +4,11 @@ use crate::micro_errors::{BLiteError, Result};
 use num_traits::{AsPrimitive, FromPrimitive};
 
 #[inline(always)]
-pub fn activation_with_min_max<T: ArrayElem<T>>(x: T, activation_min: T, activation_max: T) -> T {
+pub(crate) fn activation_with_min_max<T: ArrayElem<T>>(
+    x: T,
+    activation_min: T,
+    activation_max: T,
+) -> T {
     let mut ret = x;
     if ret < activation_min {
         ret = activation_min;
@@ -17,7 +21,7 @@ pub fn activation_with_min_max<T: ArrayElem<T>>(x: T, activation_min: T, activat
     return ret;
 }
 
-pub fn calculate_fused_activation_range<T: ArrayElem<T>>(
+pub(crate) fn calculate_fused_activation_range<T: ArrayElem<T>>(
     op: i32,
 ) -> Result<(T /* activtion_min */, T /* activation_max */)> {
     match op {
@@ -27,7 +31,7 @@ pub fn calculate_fused_activation_range<T: ArrayElem<T>>(
     }
 }
 
-pub fn calculate_fused_activation_range_quantized<T: ArrayElem<T>>(
+pub(crate) fn calculate_fused_activation_range_quantized<T: ArrayElem<T>>(
     scale: f32,
     zero_point: i32,
     op: i32,

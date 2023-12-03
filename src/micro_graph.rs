@@ -125,16 +125,6 @@ impl<'a, T> BLiteSubgraph<'a, T>
 where
     T: ArrayElem<T> + 'a,
 {
-    pub fn new(
-        node_and_registrations: &'a [(BLiteNode<'a>, BLiteRegistration<'a, T>)],
-        tensors: &'a mut [BLiteTensor<'a, T>],
-    ) -> Self {
-        Self {
-            node_and_registrations,
-            tensors,
-        }
-    }
-
     pub fn allocate_subgraph<const N: usize, S: ArenaAllocator>(
         allocator: &mut S,
         op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
