@@ -3,10 +3,9 @@ use crate::{
     micro_array::ArrayElem,
     micro_errors::BLiteError,
     micro_errors::Result,
-    micro_graph::{TFLiteOperators, TFLiteSubGraph},
+    micro_graph::TFLiteSubGraph,
     micro_slice::{alloc_array_from_offset, alloc_array_mut},
     micro_tensor::BLiteTensor,
-    tflite_schema_generated::tflite::SubGraph,
 };
 use core::mem::size_of;
 
@@ -499,7 +498,7 @@ impl<'a, 'b, 'c, 'd, T: ArrayElem<T>> GreedyMemoryPlanner<'a, 'b, 'c, 'd, T> {
     }
 }
 
-impl<'a, 'b, 'c, 'd, T: ArrayElem<T>> MemoryPlanner<'c> for GreedyMemoryPlanner<'a, 'b, 'c, 'd, T> {
+impl<'a, 'b, 'c, 'd, T: ArrayElem<T>> MemoryPlanner for GreedyMemoryPlanner<'a, 'b, 'c, 'd, T> {
     fn commit_memory_plan(&mut self, allocator: &mut impl ArenaAllocator) -> Result<()> {
         self.commit_memory_plan(allocator)?;
         Ok(())

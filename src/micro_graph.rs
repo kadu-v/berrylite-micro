@@ -1,8 +1,6 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use crate::memory_planner::greedy_memory_planner::{
-    self, AllocationInfo, GreedyMemoryPlanner, Requirement,
-};
+use crate::memory_planner::greedy_memory_planner::GreedyMemoryPlanner;
 use crate::memory_planner::MemoryPlanner;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
@@ -14,20 +12,18 @@ use crate::micro_errors::{
 use crate::micro_node::BLiteNode;
 use crate::micro_op_resolver::BLiteOpResolver;
 use crate::micro_registration::BLiteRegistration;
-use crate::micro_slice::{alloc_array_mut, from_tflite_vector};
+use crate::micro_slice::from_tflite_vector;
 use crate::micro_tensor::BLiteTensor;
 use crate::micro_tensor::BLiteTensor::*;
 use crate::tflite_schema_generated::tflite::{
     self, Buffer, Model, Operator, OperatorCode, QuantizationParameters, TensorType,
 };
-use core::borrow::BorrowMut;
 use core::cell::RefCell;
 use core::fmt::Debug;
 use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
-use std::process::Command;
 
 /*-----------------------------------------------------------------------------*/
 /* Type synonyms for TFLiteGraph                                               */
@@ -137,14 +133,6 @@ where
             node_and_registrations,
             tensors,
         }
-    }
-
-    fn f(
-        allocator: &mut impl ArenaAllocator,
-        subgraph: &TFLiteSubGraph<'a>,
-        tensors: &'a mut [BLiteTensor<'a, T>],
-    ) -> Result<()> {
-        Ok(())
     }
 
     pub fn allocate_subgraph<const N: usize, S: ArenaAllocator>(
