@@ -1,7 +1,9 @@
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use crate::memory_planner::greedy_memory_planner::GreedyMemoryPlanner;
-use crate::micro_allocation_info::{AllocationInfo, Requirement};
+use crate::memory_planner::greedy_memory_planner::{
+    self, AllocationInfo, GreedyMemoryPlanner, Requirement,
+};
+use crate::memory_planner::MemoryPlanner;
 use crate::micro_allocator::ArenaAllocator;
 use crate::micro_array::{ArrayElem, BLiteArray, BLiteQuantizationParams};
 use crate::micro_context::BLiteContext;
@@ -18,18 +20,20 @@ use crate::micro_tensor::BLiteTensor::*;
 use crate::tflite_schema_generated::tflite::{
     self, Buffer, Model, Operator, OperatorCode, QuantizationParameters, TensorType,
 };
+use core::borrow::BorrowMut;
 use core::cell::RefCell;
 use core::fmt::Debug;
 use core::{
     mem::{align_of, size_of},
     slice::from_raw_parts_mut,
 };
+use std::process::Command;
 
 /*-----------------------------------------------------------------------------*/
 /* Type synonyms for TFLiteGraph                                               */
 /*-----------------------------------------------------------------------------*/
-type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
-type TFLiteOperators<'a> = Vector<'a, ForwardsUOffset<Operator<'a>>>;
+pub(crate) type TFLiteSubGraph<'a> = tflite::SubGraph<'a>;
+pub(crate) type TFLiteOperators<'a> = Vector<'a, ForwardsUOffset<Operator<'a>>>;
 type TFLiteOperatorCodes<'a> = Vector<'a, ForwardsUOffset<OperatorCode<'a>>>;
 type TFLiteBuffers<'a> = Vector<'a, ForwardsUOffset<Buffer<'a>>>;
 
@@ -135,6 +139,14 @@ where
         }
     }
 
+    fn f(
+        allocator: &mut impl ArenaAllocator,
+        subgraph: &TFLiteSubGraph<'a>,
+        tensors: &'a mut [BLiteTensor<'a, T>],
+    ) -> Result<()> {
+        Ok(())
+    }
+
     pub fn allocate_subgraph<const N: usize, S: ArenaAllocator>(
         allocator: &mut S,
         op_resolver: &'a BLiteOpResolver<'a, N, T, S>,
@@ -145,9 +157,15 @@ where
     ) -> Result<Self> {
         let tensors = Self::allocate_eval_tensors(allocator, subgraph, buffers)?;
 
-        Self::allocate_inputs_outputs(allocator, subgraph, tensors)?;
-
-        Self::commit_memory_plan(allocator, operators, tensors)?;
+        unsafe {
+            let unsafe_duplicate_tensors = tensors as *mut [BLiteTensor<'a, T>];
+            let mut greedy_memory_planner = GreedyMemoryPlanner::new(
+                allocator,
+                subgraph,
+                &mut *unsafe_duplicate_tensors as &mut [BLiteTensor<'a, T>],
+            )?;
+            greedy_memory_planner.commit_memory_plan(allocator)?;
+        };
 
         let node_and_registrations = unsafe {
             Self::allocate_node_and_registrations(
@@ -158,95 +176,10 @@ where
                 tensors,
             )?
         };
-
         Ok(Self {
             node_and_registrations,
             tensors,
         })
-    }
-
-    fn allocate_inputs_outputs(
-        allocator: &mut impl ArenaAllocator,
-        subgraph: &TFLiteSubGraph<'a>,
-        tensors: &mut [BLiteTensor<'a, T>],
-    ) -> Result<()> {
-        let inputs = subgraph.inputs().unwrap();
-        let outputs = subgraph.outputs().unwrap();
-
-        for input_idx in inputs.iter() {
-            let size = tensors[input_idx as usize].size();
-            let data = unsafe { alloc_array_mut(allocator, size)? };
-            let mut tensor = tensors[input_idx as usize]._t()?.borrow_mut();
-            tensor.data = data;
-        }
-
-        for output_idx in outputs.iter() {
-            let size = tensors[output_idx as usize].size();
-            let data = unsafe { alloc_array_mut(allocator, size)? };
-            let mut tensor = tensors[output_idx as usize]._t()?.borrow_mut();
-            tensor.data = data;
-        }
-        Ok(())
-    }
-
-    fn commit_memory_plan(
-        allocator: &mut impl ArenaAllocator,
-        operators: &TFLiteOperators<'a>,
-        tensors: &mut [BLiteTensor<'a, T>],
-    ) -> Result<()> {
-        // TODO: should be drop this all allocation infos after creating allocation infos
-        let mut all_alloc_info = unsafe { AllocationInfo::new(allocator, tensors.len()) }?;
-        for (time_step, op) in operators.iter().enumerate() {
-            let inputs = op.inputs().unwrap();
-            let outputs = op.outputs().unwrap();
-
-            // check last_time_used using inputs
-            for idx in inputs {
-                let idx = idx as usize;
-                let size = tensors[idx].size();
-                let last_time_used = time_step;
-                let need_allocation = tensors[idx].len() == 0;
-                let info = Requirement::new(size, idx, None, Some(last_time_used), need_allocation);
-                all_alloc_info.update_last_time_used(idx, info);
-            }
-
-            // check first_time_used using outputs
-            for idx in outputs {
-                let idx = idx as usize;
-                let size = tensors[idx].size();
-                let first_time_used = time_step;
-                let need_allocation = tensors[idx].len() == 0;
-                let info =
-                    Requirement::new(size, idx, Some(first_time_used), None, need_allocation);
-                all_alloc_info.update_first_time_used(idx, info);
-            }
-        }
-
-        let need_allocation_count =
-            all_alloc_info.info.iter().fold(
-                0,
-                |acc, &info| {
-                    if info.need_allocation {
-                        acc + 1
-                    } else {
-                        acc
-                    }
-                },
-            );
-
-        let mut alloc_info = unsafe { AllocationInfo::new(allocator, need_allocation_count) }?;
-        for info in all_alloc_info.info.iter() {
-            if info.need_allocation {
-                alloc_info.add_info(info)?;
-            }
-        }
-
-        alloc_info.in_place_reverse_sort();
-        let mut greedy_memory_planner = GreedyMemoryPlanner::new(allocator, &mut alloc_info)?;
-        greedy_memory_planner.calculate_offsets_if_needed()?;
-
-        // allocate tensors following memory plan
-        unsafe { greedy_memory_planner.allocate_tensors(allocator, tensors) }
     }
 
     fn allocate_eval_tensors(

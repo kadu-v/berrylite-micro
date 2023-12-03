@@ -1,13 +1,141 @@
 use crate::{
-    micro_allocation_info::AllocationInfo,
     micro_allocator::ArenaAllocator,
     micro_array::ArrayElem,
     micro_errors::BLiteError,
     micro_errors::Result,
+    micro_graph::{TFLiteOperators, TFLiteSubGraph},
     micro_slice::{alloc_array_from_offset, alloc_array_mut},
     micro_tensor::BLiteTensor,
+    tflite_schema_generated::tflite::SubGraph,
 };
 use core::mem::size_of;
+
+use super::MemoryPlanner;
+
+/*-----------------------------------------------------------------------------*/
+/* Struct for an Requirement                                                   */
+/*-----------------------------------------------------------------------------*/
+#[derive(Debug, Clone, Copy)]
+pub struct Requirement {
+    pub idx: usize,
+    pub size: usize,
+    pub first_time_used: Option<usize>,
+    pub last_time_used: Option<usize>,
+    pub need_allocation: bool,
+}
+
+impl Requirement {
+    pub fn new(
+        size: usize,
+        idx: usize,
+        first_time_used: Option<usize>,
+        last_time_used: Option<usize>,
+        need_allocation: bool,
+    ) -> Self {
+        Self {
+            idx,
+            size,
+            first_time_used,
+            last_time_used,
+            need_allocation,
+        }
+    }
+
+    pub fn update_first_time_used(&mut self, req: Requirement) {
+        if self.first_time_used.is_none() && req.first_time_used.is_some() {
+            self.size = req.size;
+            self.idx = req.idx;
+            self.first_time_used = req.first_time_used;
+            self.need_allocation = req.need_allocation
+        }
+    }
+
+    pub fn update_last_time_used(&mut self, req: Requirement) {
+        self.size = req.size;
+        self.idx = req.idx;
+        self.last_time_used = req.last_time_used;
+        self.need_allocation = req.need_allocation
+    }
+}
+
+impl PartialEq for Requirement {
+    fn eq(&self, other: &Self) -> bool {
+        self.size == other.size
+    }
+}
+
+impl Eq for Requirement {}
+
+impl PartialOrd for Requirement {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.size.partial_cmp(&other.size)
+    }
+}
+
+impl Ord for Requirement {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.size.cmp(&other.size)
+    }
+}
+
+/*-----------------------------------------------------------------------------*/
+/* Struct for an AllocationInfo                                                */
+/*-----------------------------------------------------------------------------*/
+#[derive(Debug)]
+pub struct AllocationInfo<'a> {
+    pub info: &'a mut [Requirement],
+    pub cur_idx: usize,
+}
+
+impl<'a> AllocationInfo<'a> {
+    pub unsafe fn new(allocator: &mut impl ArenaAllocator, size: usize) -> Result<Self> {
+        let info = alloc_array_mut(allocator, size)?;
+        for i in 0..info.len() {
+            info[i] = Requirement::new(0, 0, None, None, false);
+        }
+
+        Ok(Self { info, cur_idx: 0 })
+    }
+
+    pub fn add_info(&mut self, req: &Requirement) -> Result<()> {
+        if self.cur_idx >= self.info.len() {
+            return Err(BLiteError::InfoIndexOutOfBound);
+        }
+        self.info[self.cur_idx] = req.clone();
+        self.cur_idx += 1;
+
+        Ok(())
+    }
+
+    pub fn update_first_time_used(&mut self, idx: usize, req: Requirement) {
+        let mut cur_info = self.info[idx];
+        cur_info.update_first_time_used(req);
+        self.info[idx] = cur_info;
+    }
+
+    pub fn update_last_time_used(&mut self, idx: usize, req: Requirement) {
+        let mut cur_info = self.info[idx];
+        cur_info.update_last_time_used(req);
+        self.info[idx] = cur_info;
+    }
+
+    pub fn in_place_reverse_sort(&mut self) {
+        for i in 1..self.info.len() {
+            if self.info[i - 1] <= self.info[i] {
+                let mut j = i;
+                let tmp = self.info[i].clone();
+                loop {
+                    self.info[j] = self.info[j - 1];
+                    j -= 1;
+                    if !(j > 0 && self.info[j - 1] <= tmp) {
+                        break;
+                    }
+                }
+                self.info[j] = tmp;
+            }
+        }
+    }
+}
 
 /*-----------------------------------------------------------------------------*/
 /* Struct for a List Entry                                                     */
@@ -115,18 +243,120 @@ impl<'a> OffsetList<'a> {
 /* Struct for a GreedyMemoryPlanner                                            */
 /*-----------------------------------------------------------------------------*/
 #[derive(Debug)]
-pub struct GreedyMemoryPlanner<'a, 'b> {
-    info: &'b mut AllocationInfo<'b>,
-    offset_list: OffsetList<'a>,
+pub struct GreedyMemoryPlanner<'a, 'b, 'c, 'd, T: ArrayElem<T>> {
+    allocation_info: AllocationInfo<'a>,
+    offset_list: OffsetList<'b>,
+    subgraph: &'d TFLiteSubGraph<'c>,
+    tensors: &'c mut [BLiteTensor<'c, T>],
 }
 
-impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
+impl<'a, 'b, 'c, 'd, T: ArrayElem<T>> GreedyMemoryPlanner<'a, 'b, 'c, 'd, T> {
     pub fn new(
         allocator: &mut impl ArenaAllocator,
-        info: &'b mut AllocationInfo<'b>,
+        subgraph: &'d TFLiteSubGraph<'c>,
+        tensors: &'c mut [BLiteTensor<'c, T>],
     ) -> Result<Self> {
-        let offset_list = OffsetList::new(allocator, info.info.len())?;
-        Ok(Self { info, offset_list })
+        let dummy_allocation_info = unsafe { AllocationInfo::new(allocator, 0) }?;
+        let dummy_offset_list = OffsetList::new(allocator, 0)?;
+        Ok(Self {
+            allocation_info: dummy_allocation_info,
+            offset_list: dummy_offset_list,
+            subgraph,
+            tensors,
+        })
+    }
+
+    fn commit_memory_plan(&mut self, allocator: &mut impl ArenaAllocator) -> Result<()> {
+        self.allocate_inputs_outputs(allocator)?;
+        let allocation_info = self.calculate_allocation_info(allocator)?;
+        let offset_list = OffsetList::new(allocator, allocation_info.info.len())?;
+        self.allocation_info = allocation_info;
+        self.offset_list = offset_list;
+        self.allocate_intermediate_tensors(allocator)?;
+        Ok(())
+    }
+
+    fn calculate_allocation_info(
+        &self,
+        allocator: &mut impl ArenaAllocator,
+    ) -> Result<AllocationInfo<'a>> {
+        // TODO: should be drop this all allocation infos after creating allocation infos
+        let mut all_alloc_info = unsafe { AllocationInfo::new(allocator, self.tensors.len()) }?;
+        for (time_step, op) in self.subgraph.operators().unwrap().iter().enumerate() {
+            let inputs = op.inputs().unwrap();
+            let outputs = op.outputs().unwrap();
+
+            // check last_time_used using inputs
+            for idx in inputs {
+                let idx = idx as usize;
+                let size = self.tensors[idx].size();
+                let last_time_used = time_step;
+                let need_allocation = self.tensors[idx].len() == 0;
+                let info = Requirement::new(size, idx, None, Some(last_time_used), need_allocation);
+                all_alloc_info.update_last_time_used(idx, info);
+            }
+
+            // check first_time_used using outputs
+            for idx in outputs {
+                let idx = idx as usize;
+                let size = self.tensors[idx].size();
+                let first_time_used = time_step;
+                let need_allocation = self.tensors[idx].len() == 0;
+                let info =
+                    Requirement::new(size, idx, Some(first_time_used), None, need_allocation);
+                all_alloc_info.update_first_time_used(idx, info);
+            }
+        }
+
+        let need_allocation_count =
+            all_alloc_info.info.iter().fold(
+                0,
+                |acc, &info| {
+                    if info.need_allocation {
+                        acc + 1
+                    } else {
+                        acc
+                    }
+                },
+            );
+
+        let mut allocation_info = unsafe { AllocationInfo::new(allocator, need_allocation_count) }?;
+        for info in all_alloc_info.info.iter() {
+            if info.need_allocation {
+                allocation_info.add_info(info)?;
+            }
+        }
+
+        allocation_info.in_place_reverse_sort();
+
+        Ok(allocation_info)
+    }
+
+    fn allocate_intermediate_tensors(&mut self, allocator: &mut impl ArenaAllocator) -> Result<()> {
+        self.calculate_offsets_if_needed()?;
+
+        // allocate tensors following memory plan
+        unsafe { self.allocate_tensors_following_plan(allocator) }
+    }
+
+    fn allocate_inputs_outputs(&mut self, allocator: &mut impl ArenaAllocator) -> Result<()> {
+        let inputs = self.subgraph.inputs().unwrap();
+        let outputs = self.subgraph.outputs().unwrap();
+
+        for input_idx in inputs.iter() {
+            let size = self.tensors[input_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = self.tensors[input_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+
+        for output_idx in outputs.iter() {
+            let size = self.tensors[output_idx as usize].size();
+            let data = unsafe { alloc_array_mut(allocator, size)? };
+            let mut tensor = self.tensors[output_idx as usize]._t()?.borrow_mut();
+            tensor.data = data;
+        }
+        Ok(())
     }
 
     fn does_entry_overlap_in_time(
@@ -136,7 +366,7 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
         last_time_used: usize,
     ) -> Result<bool> {
         if let Some(requirement_idx) = entry.requirement_idx {
-            let req = self.info.info[requirement_idx];
+            let req = self.allocation_info.info[requirement_idx];
             if req.first_time_used.unwrap() > last_time_used {
                 return Ok(false);
             }
@@ -149,20 +379,19 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
         Ok(true)
     }
 
-    pub unsafe fn allocate_tensors<T: ArrayElem<T>>(
-        &mut self,
+    pub unsafe fn allocate_tensors_following_plan(
+        &self,
         allocator: &mut impl ArenaAllocator,
-        tensors: &mut [BLiteTensor<'a, T>],
     ) -> Result<()> {
         let mut max_offset = 0;
         for entry in self.offset_list.list.iter() {
             let offset = entry.offset;
             let requirement_idx = entry.requirement_idx.unwrap();
-            let req = self.info.info[requirement_idx];
+            let req = self.allocation_info.info[requirement_idx];
             let tensor_idx = req.idx;
-            let size = tensors[tensor_idx].size();
+            let size = self.tensors[tensor_idx].size();
             let data = unsafe { alloc_array_from_offset::<T>(allocator, offset, size) }?;
-            tensors[tensor_idx]._t()?.borrow_mut().data = data;
+            self.tensors[tensor_idx]._t()?.borrow_mut().data = data;
 
             if max_offset < offset + size {
                 max_offset = offset + size;
@@ -227,7 +456,7 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
 
         for i in 1..self.offset_list.len() {
             let buffer_id = i;
-            let wanted_requirement = self.info.info[i];
+            let wanted_requirement = self.allocation_info.info[i];
             let wanted_size = wanted_requirement.size;
             let wanted_first_time_used = wanted_requirement.first_time_used.unwrap();
             let wanted_last_time_used = wanted_requirement.last_time_used.unwrap();
@@ -243,7 +472,7 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
 
                 if let Some(prior_entry) = prior_entry {
                     let candidate_requirement =
-                        self.info.info[prior_entry.requirement_idx.unwrap()];
+                        self.allocation_info.info[prior_entry.requirement_idx.unwrap()];
                     let entry_offset = prior_entry.offset + candidate_requirement.size;
                     if entry_offset > candidate_offset {
                         candidate_offset = entry_offset;
@@ -266,6 +495,13 @@ impl<'a, 'b> GreedyMemoryPlanner<'a, 'b> {
             let new_entry = ListEntry::new(new_entry_offset, new_entry_requirement_idx, None);
             self.insert_entry(new_entry)?;
         }
+        Ok(())
+    }
+}
+
+impl<'a, 'b, 'c, 'd, T: ArrayElem<T>> MemoryPlanner<'c> for GreedyMemoryPlanner<'a, 'b, 'c, 'd, T> {
+    fn commit_memory_plan(&mut self, allocator: &mut impl ArenaAllocator) -> Result<()> {
+        self.commit_memory_plan(allocator)?;
         Ok(())
     }
 }
