@@ -2,11 +2,11 @@
 [![build](https://github.com/kadu-v/berrylite/actions/workflows/rust.yml/badge.svg?branch=develop)](https://github.com/kadu-v/berrylite/actions/workflows/rust.yml)
 
 BerryLite Micro is the interpreter of TensorFlow model implemented  entirely in Rust.
-The interpreter is to execute [TensorFlow Lite](https://www.tensorflow.org/lite) models on micro controller, 
+The interpreter is to execute [TensorFlow Lite](https://www.tensorflow.org/lite) models on micro controllers, 
 and provides APIs similar with [TensorFlow Micro](https://www.tensorflow.org/lite/microcontrollers)'s APIs. 
 
 ## How to use
-You add the following code to your `Cargo.toml`.
+You should add the following code to your `Cargo.toml`.
 ```toml
 berrylite = { git = "git@github.com:kadu-v/berrylite.git" }
 ```
