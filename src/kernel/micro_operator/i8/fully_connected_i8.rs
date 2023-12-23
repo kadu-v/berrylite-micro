@@ -123,8 +123,6 @@ impl OpFullyConnectedInt8 {
         node: &BLiteNode<'a>,
         builtin_option: BLiteBuiltinOption<T>,
     ) -> Result<()> {
-        dbg!("x");
-
         let QuantizedFullyConnectedOptions {
             op_code: _,
             fused_activation_min,
